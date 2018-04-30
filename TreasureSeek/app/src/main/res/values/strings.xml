@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Treasure Seek</string>
+    <string name="facebook_app_id">1728787693827176</string>
+    <string name="fb_login_protocol_scheme">fb1728787693827176</string>
+    <string name="default_username">No user logged!</string>
+</resources>
