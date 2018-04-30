@@ -17,6 +17,7 @@ out/
 .gradle/
 build/
 
+
 # Local configuration file (sdk path, etc)
 local.properties
 
@@ -53,3 +54,6 @@ google-services.json
 freeline.py
 freeline/
 freeline_project_description.json
+
+#apple
+*.DS_Store
