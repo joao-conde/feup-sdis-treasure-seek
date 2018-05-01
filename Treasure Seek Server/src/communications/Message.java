@@ -87,6 +87,14 @@ public class Message {
 		this.body = body;
 	}
 	
+	public MessageHeader getHeader() {
+		return header;
+	}
+
+	public JSONObject getBody() {
+		return body;
+	}
+	
 	/**
 	 * Parse a raw message and builds a message object with everything needed 
 	 * to identify resource and action to perform
@@ -159,6 +167,8 @@ public class Message {
 	}
 	
 	
+	
+	
 	/**
 	 * Parse path location of the message
 	 * 
@@ -222,13 +232,7 @@ public class Message {
 		
 	}
 
-	public MessageHeader getHeader() {
-		return header;
-	}
 
-	public JSONObject getBody() {
-		return body;
-	}
 	
 	
 	
