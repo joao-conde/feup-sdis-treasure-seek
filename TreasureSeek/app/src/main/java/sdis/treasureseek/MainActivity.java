@@ -65,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onSuccess(LoginResult loginResult) {
 
+            System.out.println(loginResult);
 
         }
 

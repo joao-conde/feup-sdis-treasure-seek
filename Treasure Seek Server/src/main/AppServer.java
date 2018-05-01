@@ -4,7 +4,8 @@ public class AppServer{
 
 
     public static void main(String args[]){
-        AppServer server = new AppServer();
+        //AppServer server = 
+        		new AppServer();
     }
 
     public AppServer(){

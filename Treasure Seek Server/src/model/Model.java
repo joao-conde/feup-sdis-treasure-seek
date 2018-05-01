@@ -1,14 +1,36 @@
 package model;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+
+import javax.naming.InvalidNameException;
 
 public abstract class Model {
 	
 	public static enum ModelType {
-		User("User","user"),
-		Treasure("Treasure","treasure"),
-		TreasureFound("TreasureFound","user_treasure");
+		USER("users","user"),
+		TREASURE("treasures","treasure"),
+		FOUND_TREASURE("foundTreasures","user_treasure");
+		
+		static final ArrayList<String> types = new ArrayList<String>(Arrays.asList("users","treasures","foundTreasures"));
+		
+		public static ModelType type(String text) throws InvalidNameException {
+			
+			switch(types.indexOf(text)) {
+			
+				case 0:
+					return ModelType.USER;
+				case 1:
+					return ModelType.TREASURE;
+				case 2:
+					return ModelType.FOUND_TREASURE;
+				default:
+					throw new InvalidNameException("Invalid Model Type");
+			
+			}
+					
+		}
 	
 		private ModelType(String modelName, String tableName) {
 			this.modelName = modelName;
