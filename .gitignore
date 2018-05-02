@@ -58,3 +58,9 @@ freeline_project_description.json
 #apple
 *.DS_Store
 /.metadata/
+
+# Database
+*.db
+
+#libs
+libs
