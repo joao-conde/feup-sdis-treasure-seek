@@ -12,6 +12,9 @@ public class LoadBalancer{
     private final static String multicastAddress = "224.0.0.133";
     private final static int multicastPort = 1025;
 
+    private final static int broadcastInitialDelay = 0; //in milliseconds
+    private final static int broadcastRate = 2000; //in milliseconds
+
     
     private String broadcastMsg;
     private DatagramPacket broadcastPacket;
@@ -61,7 +64,7 @@ public class LoadBalancer{
                     
                 
             }
-        }, 0, 2000);
+        }, LoadBalancer.broadcastInitialDelay, LoadBalancer.broadcastRate);
     }
 
 
