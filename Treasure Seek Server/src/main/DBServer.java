@@ -33,7 +33,7 @@ public class DBServer implements DBOperations{
 
 
 		Registry registry = LocateRegistry.createRegistry(registryPort);
-		registry.bind("operations", dbOps); 
+		registry.bind("db_operations", dbOps); 
 		
 		
 		
@@ -54,7 +54,7 @@ public class DBServer implements DBOperations{
             System.out.println("Connection to SQLite has been established.");
 
             PreparedStatement stmt = connection.prepareStatement(
-            	"INSERT INTO user VALUES (?, ?, ?)"
+            	"INSERT INTO user (username, email, token) VALUES (?, ?, ?)"
             );
 
             stmt.setString(1, username);
