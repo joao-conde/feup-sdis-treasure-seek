@@ -57,6 +57,8 @@ public class Message {
 					return MessageType.LOGOUT;
 				case 6:
 					return MessageType.RETRIEVE_HOST;
+				case 7:
+					return MessageType.NEW_SERVER;
 
 				default:
 					throw new ParseMessageException("Invalid Protocol Action");
@@ -127,11 +129,11 @@ public class Message {
 	 * @throws JSONException - Something wrong with message body
 	 */
 
-	public static Message parseMessage(byte[] raw) throws ParseMessageException, JSONException {
+	public static Message parseMessage(String raw) throws ParseMessageException, JSONException {
 		
 		Message message;
 		
-		ByteArrayInputStream inputStream = new ByteArrayInputStream(raw);
+		ByteArrayInputStream inputStream = new ByteArrayInputStream(raw.getBytes());
 		Scanner messageScanner = new Scanner(inputStream);
 				
 		String messageTypeString = null;

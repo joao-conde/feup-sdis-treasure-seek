@@ -20,7 +20,7 @@ public class ProcessMessageTest {
 		String message = "GET users";
 		
 		try {
-			Message.parseMessage(message.getBytes());
+			Message.parseMessage(message);
 		}
 		
 		catch(ParseMessageException | JSONException e) {
@@ -38,7 +38,7 @@ public class ProcessMessageTest {
 		String message = "CREATE users";
 		
 		try {
-			Message.parseMessage(message.getBytes());
+			Message.parseMessage(message);
 		}
 		
 		catch(ParseMessageException | JSONException e) {
@@ -56,7 +56,7 @@ public class ProcessMessageTest {
 		String message = "UPDATE users";
 		
 		try {
-			Message.parseMessage(message.getBytes());
+			Message.parseMessage(message);
 		}
 		
 		catch(ParseMessageException | JSONException e) {
@@ -74,7 +74,7 @@ public class ProcessMessageTest {
 		String message = "RETRIEVE users/1/foundTreasures/2/players";
 		
 		try {
-			Message.parseMessage(message.getBytes());
+			Message.parseMessage(message);
 		}
 		
 		catch(ParseMessageException | JSONException e) {
@@ -92,7 +92,7 @@ public class ProcessMessageTest {
 		String message = "RETRIEVE players/1";
 		
 		try {
-			Message.parseMessage(message.getBytes());
+			Message.parseMessage(message);
 		}
 		
 		catch(ParseMessageException | JSONException e) {
@@ -111,7 +111,7 @@ public class ProcessMessageTest {
 		
 		try {
 			
-			Message msg = Message.parseMessage(message.getBytes());
+			Message msg = Message.parseMessage(message);
 			
 			assertEquals(msg.getHeader().getMessageType(), MessageType.RETRIEVE);
 			assertEquals(msg.getHeader().getResource().get(0).key, ModelType.USER);
@@ -134,7 +134,7 @@ public class ProcessMessageTest {
 		
 		try {
 			
-			Message msg = Message.parseMessage(message.getBytes());
+			Message msg = Message.parseMessage(message);
 			
 			assertEquals(msg.getHeader().getMessageType(), MessageType.RETRIEVE);
 			assertEquals(msg.getHeader().getResource().get(0).key, ModelType.USER);
@@ -157,7 +157,7 @@ public class ProcessMessageTest {
 		
 		try {
 			
-			Message msg = Message.parseMessage(message.getBytes());
+			Message msg = Message.parseMessage(message);
 			
 			assertEquals(msg.getHeader().getMessageType(), MessageType.RETRIEVE_HOST);
 				
@@ -178,7 +178,7 @@ public class ProcessMessageTest {
 		
 		try {
 			
-			Message msg = Message.parseMessage(message.getBytes());
+			Message msg = Message.parseMessage(message);
 			
 			assertEquals(msg.getHeader().getMessageType(), MessageType.NEW_SERVER);
 				
@@ -199,7 +199,7 @@ public class ProcessMessageTest {
 			
 		try {
 			
-			Message msg = Message.parseMessage(message.getBytes());
+			Message msg = Message.parseMessage(message);
 			
 			assertEquals(msg.getHeader().getMessageType(), MessageType.CREATE);
 			assertEquals(msg.getHeader().getResource().get(0).key, ModelType.USER);
@@ -229,7 +229,7 @@ public class ProcessMessageTest {
 			
 		try {
 			
-			Message msg = Message.parseMessage(message.getBytes());
+			Message msg = Message.parseMessage(message);
 			
 			assertEquals(msg.getHeader().getMessageType(), MessageType.RETRIEVE);
 			assertEquals(msg.getHeader().getResource().get(0).key, ModelType.TREASURE);
@@ -252,7 +252,7 @@ public class ProcessMessageTest {
 		
 		try {
 			
-			Message msg = Message.parseMessage(message.getBytes());
+			Message msg = Message.parseMessage(message);
 			
 			assertEquals(msg.getHeader().getMessageType(), MessageType.RETRIEVE);
 			assertEquals(msg.getHeader().getResource().get(0).key, ModelType.TREASURE);
@@ -275,7 +275,7 @@ public class ProcessMessageTest {
 			
 		try {
 			
-			Message msg = Message.parseMessage(message.getBytes());
+			Message msg = Message.parseMessage(message);
 			
 			assertEquals(msg.getHeader().getMessageType(), MessageType.CREATE);
 			assertEquals(msg.getHeader().getResource().get(0).key, ModelType.TREASURE);
@@ -306,7 +306,7 @@ public class ProcessMessageTest {
 			
 		try {
 			
-			Message msg = Message.parseMessage(message.getBytes());
+			Message msg = Message.parseMessage(message);
 			
 			assertEquals(msg.getHeader().getMessageType(), MessageType.RETRIEVE);
 			assertEquals(msg.getHeader().getResource().get(0).key, ModelType.USER);
@@ -331,7 +331,7 @@ public class ProcessMessageTest {
 			
 		try {
 			
-			Message msg = Message.parseMessage(message.getBytes());
+			Message msg = Message.parseMessage(message);
 			
 			assertEquals(msg.getHeader().getMessageType(), MessageType.RETRIEVE);
 			assertEquals(msg.getHeader().getResource().get(0).key, ModelType.USER);
@@ -356,7 +356,7 @@ public class ProcessMessageTest {
 			
 		try {
 			
-			Message msg = Message.parseMessage(message.getBytes());
+			Message msg = Message.parseMessage(message);
 			
 			assertEquals(msg.getHeader().getMessageType(), MessageType.CREATE);
 			assertEquals(msg.getHeader().getResource().get(0).key, ModelType.USER);
@@ -384,7 +384,7 @@ public class ProcessMessageTest {
 			
 		try {
 			
-			Message msg = Message.parseMessage(message.getBytes());
+			Message msg = Message.parseMessage(message);
 			
 			assertEquals(msg.getHeader().getMessageType(), MessageType.UPDATE);
 			assertEquals(msg.getHeader().getResource().get(0).key, ModelType.TREASURE);
@@ -412,7 +412,7 @@ public class ProcessMessageTest {
 			
 		try {
 			
-			Message msg = Message.parseMessage(message.getBytes());
+			Message msg = Message.parseMessage(message);
 			
 			assertEquals(msg.getHeader().getMessageType(), MessageType.DELETE);
 			assertEquals(msg.getHeader().getResource().get(0).key, ModelType.TREASURE);
@@ -435,7 +435,7 @@ public class ProcessMessageTest {
 		
 		try {
 			
-			Message msg = Message.parseMessage(message.getBytes());
+			Message msg = Message.parseMessage(message);
 			
 			assertEquals(msg.getHeader().getMessageType(),MessageType.LOGIN);
 			assertEquals(msg.getBody().get("token"), "af546cda34fc");
@@ -452,7 +452,7 @@ public class ProcessMessageTest {
 		
 		try {
 			
-			Message msg = Message.parseMessage(message.getBytes());
+			Message msg = Message.parseMessage(message);
 			
 			assertEquals(msg.getHeader().getMessageType(),MessageType.LOGOUT);
 			assertEquals(msg.getBody().get("token"), "af546cda34fc");
