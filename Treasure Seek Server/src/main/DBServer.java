@@ -7,14 +7,15 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 public class DBServer implements DBOperations{
 
 	private static DBServer instance = null;
-    private static Connection connection = null;
+    
     private static String DBNAME = "treasureSeekDB.db";
+    private static String DBURL = "jdbc:sqlite:db/" + DBNAME;
 
     public static DBServer getInstance() {
     	if (instance == null)
@@ -22,7 +23,7 @@ public class DBServer implements DBOperations{
 	    return instance;
 	}
     
-	public static void main(String[] args) throws RemoteException, AlreadyBoundException {
+	public static void main(String[] args) throws RemoteException, AlreadyBoundException, SQLException {
 		
 		instance = new DBServer();
 		DBOperations dbOps = (DBOperations) UnicastRemoteObject.exportObject(instance, 0);
@@ -30,23 +31,39 @@ public class DBServer implements DBOperations{
 		int registryPort = args.length > 0 ? Integer.parseInt(args[0]) : 1099;
 		instance = new DBServer();
 
+
 		Registry registry = LocateRegistry.createRegistry(registryPort);
 		registry.bind("operations", dbOps); 
 		
-		connect();
-
+		
+		
 	}
+	
+	
 	
 	 /**
      * Connect to a sample database
      */
-    public static void connect() {
+	@Override
+	public void insertUser(String username, String email, String token) {
+    	Connection connection = null;
         try {
-            String url = "jdbc:sqlite:db/" + DBNAME;
             // create a connection to the database
-            connection = DriverManager.getConnection(url);
-            
+            connection = DriverManager.getConnection(DBURL);
+
             System.out.println("Connection to SQLite has been established.");
+
+            PreparedStatement stmt = connection.prepareStatement(
+            	"INSERT INTO user VALUES (?, ?, ?)"
+            );
+
+            stmt.setString(1, username);
+            stmt.setString(2, email);
+            stmt.setString(3, token);
+            stmt.executeUpdate();
+            
+            System.out.println("User inserted with success.");
+
             
         } catch (SQLException e) {
             System.out.println(e.getMessage());
@@ -60,18 +77,6 @@ public class DBServer implements DBOperations{
             }
         }
     }
-    
-
-	@Override
-	public void insertUser(String username, String email, String token) throws SQLException {
-
-		Statement stmt = connection.createStatement();
-        String sql= "INSERT INTO user (username,email,token) " +
-        			"VALUES (" + username + ", " + email + ", " + token + ");"; 
-        stmt.executeUpdate(sql);
-
-        
-	}
 	
 
 }
