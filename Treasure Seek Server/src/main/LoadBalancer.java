@@ -1,71 +1,72 @@
 package main;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.InetAddress;
-import java.net.MulticastSocket;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.io.InputStreamReader;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Scanner;
+
+import org.json.JSONException;
+
+import communications.Message;
+import util.ParseMessageException;
+import util.Utils.Pair;
+
 
 public class LoadBalancer{
+	
+	static int serverPort = 6789;
+	private ArrayList<Pair<String,String>> availableServers = new ArrayList<Pair<String,String>>();
 
-    private final static String multicastAddress = "224.0.0.133";
-    private final static int multicastPort = 1025;
-
-    private final static int broadcastInitialDelay = 0; //in milliseconds
-    private final static int broadcastRate = 2000; //in milliseconds
-
-    
-    private String broadcastMsg;
-    private DatagramPacket broadcastPacket;
-    private MulticastSocket multicastSocket;
-    
-
-    public static void main(String[] args){
+    public static void main(String[] args) throws IOException, ParseMessageException, JSONException{
+    	System.out.println("On Load Balancer");
         LoadBalancer lb = new LoadBalancer();
     }
 
-    public LoadBalancer(){
+    public LoadBalancer() throws IOException, ParseMessageException, JSONException{
+    	
+	 String clientSentence;
+	 String capitalizedSentence;
+	 availableServers.add(new Pair<String,String>("IP1","60"));
+	 availableServers.add(new Pair<String,String>("IP2","61"));
+	 availableServers.add(new Pair<String,String>("IP3","62"));
 
-        this.broadcastMsg = this.multicastAddress + " " + this.multicastPort;
+	 ServerSocket welcomeSocket = new ServerSocket(serverPort);
+	
+	  while (true) {
+	   Socket connectionSocket = welcomeSocket.accept();
+	   Scanner inFromClient =
+	    new Scanner(new InputStreamReader(connectionSocket.getInputStream()));
+	   DataOutputStream outToClient = new DataOutputStream(connectionSocket.getOutputStream());
+	   clientSentence = inFromClient.nextLine();
+	   System.out.println("Received from Client: " + clientSentence);
+	   Message message = Message.parseMessage(clientSentence.getBytes());
+	   
+	   Pair<String, String> serverInfo = selectServer();
+	   outToClient.writeBytes(serverInfo.key + " " + serverInfo.value + '\n');
+	  }
 
-        try{
-            InetAddress inetAdd = InetAddress.getByName(this.multicastAddress);
-            this.multicastSocket = new MulticastSocket(this.multicastPort);
-            this.multicastSocket.joinGroup(inetAdd);
-            this.broadcastPacket = new DatagramPacket(this.broadcastMsg.getBytes(), this.broadcastMsg.getBytes().length, inetAdd, this.multicastPort);
-        }
-        catch(IOException e){
-            e.printStackTrace();
-        }
-        
-        this.broadcastIP();
     }
-
-
-    public void broadcastIP(){
-
-        Timer timer = new Timer();
-
-        timer.scheduleAtFixedRate(new TimerTask(){
-        
-            @Override
-            public void run() {
-
-                   
-                try {
-                    System.out.println("\n---MESSAGE---\n" + LoadBalancer.this.broadcastMsg);
-                    LoadBalancer.this.multicastSocket.send(LoadBalancer.this.broadcastPacket);
-                } 
-                catch (IOException e) {
-                    System.err.println("Failure broadcasting message");
-                    e.printStackTrace();
-                }
-                    
-                
-            }
-        }, LoadBalancer.broadcastInitialDelay, LoadBalancer.broadcastRate);
+    
+    public Pair<String,String> selectServer(){
+    	
+    	Pair<String, String> server = availableServers.get(0);
+    	
+    	availableServers.remove(0);
+    	availableServers.add(server);
+    	
+		return server;	
     }
-
-
+    
+    public void dispatcher() {
+    	
+//    	executor = Executors.newFixedThreadPool(10);
+//    	
+//    	Runnable appServer = new AppServer();
+//		executor.execute(appServer);
+    	
+    }
+    
 }

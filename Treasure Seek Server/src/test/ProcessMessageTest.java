@@ -151,6 +151,27 @@ public class ProcessMessageTest {
 	}
 	
 	@Test
+	public void processMessageRetrieveHost() {
+		
+		String message = "RETRIEVE_HOST";
+		
+		try {
+			
+			Message msg = Message.parseMessage(message.getBytes());
+			
+			assertEquals(msg.getHeader().getMessageType(), MessageType.RETRIEVE_HOST);
+				
+		}
+		
+		catch(ParseMessageException | JSONException e) {
+			
+			System.out.println(e.getMessage());
+			
+		}
+		
+	}
+	
+	@Test
 	public void processMessageCreateUser() {
 		
 		String message = "CREATE users {username:fump, email:joaopedrofump@gmail.com, token:fdsfsdg, admin:true}";
