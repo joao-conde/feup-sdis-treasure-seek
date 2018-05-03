@@ -23,6 +23,7 @@ public class AppServer{
 
         
         Registry registry = LocateRegistry.getRegistry(registryPort);
+//        LocateRegistry.get
         DBOperations dbOperations = (DBOperations) registry.lookup("db_operations");
         
         dbOperations.insertUser("leonardomgt", "leo@exemplo.com", "qwertyuioplkjhgfdsa");
