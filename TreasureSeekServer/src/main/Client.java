@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -26,9 +27,10 @@ public class Client {
 
 	  Socket clientSocket = new Socket("localhost", serverPort);
 	  DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
+	  PrintWriter pw = new PrintWriter(outToServer);
 	  BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 	  
-	  outToServer.writeBytes(ask + '\n');
+	  pw.println(ask);
 	  infoFromLoadBalancer = inFromServer.readLine();
 	  System.out.println("Received from Server: " + infoFromLoadBalancer);
 	  clientSocket.close();

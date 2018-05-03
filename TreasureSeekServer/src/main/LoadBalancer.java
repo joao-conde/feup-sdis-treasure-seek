@@ -63,9 +63,11 @@ public class LoadBalancer {
 			DataOutputStream out = new DataOutputStream(connectionSocket.getOutputStream());
 
 			System.out.println("Received message: " + incomingMsg);
-			Message message = Message.parseMessage(incomingMsg.getBytes());
+			Message message = Message.parseMessage(incomingMsg);
 			
 			this.handleMessage(message, out);
+			
+			in.close();
 			
 		}
 		

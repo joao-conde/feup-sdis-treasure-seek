@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.TextView;
 
 import com.facebook.AccessToken;
@@ -30,17 +29,17 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
 
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 
+import sdis.controller.UserController;
+
 public class MainActivity extends AppCompatActivity {
 
     public static String[] ENC_PROTOCOLS = new String[] {"TLSv1.2"};
-    public static String[] ENC_CYPHER_SUITES = new String[] {"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256"};
     public static int SERVER_PORT = 2000;
 
     CallbackManager facebookCallbackManager = CallbackManager.Factory.create();
@@ -75,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
 
             if(Profile.getCurrentProfile() != null) {
                 usernameTextView.setText(Profile.getCurrentProfile().getName());
-                new LoginToTreasureSeek().execute();
+                new LoginToTreasureSeek().execute(facebookAccessToken);
             }
         }
 
@@ -101,7 +100,8 @@ public class MainActivity extends AppCompatActivity {
         public void onSuccess(LoginResult loginResult) {
 
             System.out.println(loginResult);
-            new LoginToTreasureSeek().execute();
+            facebookAccessToken = loginResult.getAccessToken();
+            new LoginToTreasureSeek().execute(facebookAccessToken);
 
         }
 
@@ -134,14 +134,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    class LoginToTreasureSeek extends AsyncTask<Void,Void,Void> {
+    class LoginToTreasureSeek extends AsyncTask<AccessToken,Void,Void> {
 
         @Override
-        protected Void doInBackground(Void... voids) {
+        protected Void doInBackground(AccessToken... tokens) {
 
             try  {
-
-                //SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
 
                 SSLSocketFactory factory = sslContext.getSocketFactory();
                 SSLSocket socket = (SSLSocket) factory.createSocket(InetAddress.getByName("10.0.2.2"),SERVER_PORT);
@@ -151,7 +149,7 @@ public class MainActivity extends AppCompatActivity {
 
 
                 PrintWriter pw = new PrintWriter(socket.getOutputStream());
-                pw.println("fb token: " + facebookAccessToken.getToken());
+                pw.println(UserController.getInstance().buildLoginMessage(tokens[0]));
                 pw.close();
 
 
@@ -165,32 +163,6 @@ public class MainActivity extends AppCompatActivity {
             return null;
         }
     }
-
-    private void trustStoreAux() {
-
-        try {
-
-            TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-            tmf.init((KeyStore) null);
-
-            X509TrustManager xtm = (X509TrustManager) tmf.getTrustManagers()[0];
-
-            for (X509Certificate cert : xtm.getAcceptedIssuers()) {
-                String certStr = "S:" + cert.getSubjectDN().getName() + "\nI:"
-                        + cert.getIssuerDN().getName();
-
-                Log.d("cert", certStr);
-
-            }
-
-
-
-        } catch (NoSuchAlgorithmException | KeyStoreException e) {
-            e.printStackTrace();
-        }
-
-    }
-
 
     private SSLContext createSSLContextWithCustomCertificate() {
 
@@ -220,7 +192,6 @@ public class MainActivity extends AppCompatActivity {
         return context;
 
     }
-
 
     private Certificate getCertificateFromFile() {
 

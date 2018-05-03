@@ -1,8 +1,8 @@
 package model;
 
-public class TreasureFound extends Model {
+public class FoundTreasure extends Model {
 
-	public TreasureFound() {
+	public FoundTreasure() {
 		super(ModelType.FOUND_TREASURE, new String[] {"userId","treasureId"});
 	}
 
