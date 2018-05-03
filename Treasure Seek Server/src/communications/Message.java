@@ -27,9 +27,11 @@ public class Message {
 		DELETE("DELETE"),
 		RETRIEVE("RETRIEVE"),
 		LOGIN("LOGIN"),
-		LOGOUT("LOGOUT");
+		LOGOUT("LOGOUT"),
+		RETRIEVE_HOST("RETRIEVE_HOST"),
+		NEW_SERVER("NEW_SERVER");
 		
-		static final ArrayList<String> types = new ArrayList<String>(Arrays.asList("CREATE","UPDATE","DELETE","RETRIEVE","LOGIN","LOGOUT"));
+		static final ArrayList<String> types = new ArrayList<String>(Arrays.asList("CREATE","UPDATE","DELETE","RETRIEVE","LOGIN","LOGOUT","RETRIEVE_HOST","NEW_SERVER"));
 		
 		public String description;
 		
@@ -53,6 +55,9 @@ public class Message {
 					return MessageType.LOGIN;
 				case 5:
 					return MessageType.LOGOUT;
+				case 6:
+					return MessageType.RETRIEVE_HOST;
+
 				default:
 					throw new ParseMessageException("Invalid Protocol Action");
 			
@@ -76,12 +81,19 @@ public class Message {
 			this.resourcePath = resource;
 		}
 		
+		
 		public MessageType getMessageType() {
 			return messageType;
 		}
 		public ArrayList<Pair<Model.ModelType, Integer>> getResource() {
 			return resourcePath;
 		}
+
+		public void setResourcePath(ArrayList<Pair<Model.ModelType, Integer>> resourcePath) {
+			this.resourcePath = resourcePath;
+		}
+		
+		
 		
 	}
 	
@@ -127,7 +139,6 @@ public class Message {
 		
 		try {
 			messageTypeString = messageScanner.next();
-			resourcePathString = messageScanner.next();
 			
 		}
 		
@@ -144,32 +155,42 @@ public class Message {
 		 */
 					
 		MessageType messageType = MessageType.type(messageTypeString);
-		ArrayList<Pair<Model.ModelType,Integer>> pathToResource = parsePath(resourcePathString);
-		MessageHeader header = new MessageHeader(messageType, pathToResource);
+		MessageHeader header = new MessageHeader(messageType);
+
 		
-		if(messageType == MessageType.RETRIEVE || messageType == MessageType.DELETE) {
+		if(messageType == MessageType.RETRIEVE_HOST) {
 			message = new Message(header);
 		}
 		
 		else {
+			resourcePathString = messageScanner.next();
+			ArrayList<Pair<Model.ModelType,Integer>> pathToResource = parsePath(resourcePathString);
+			header.setResourcePath(pathToResource);
+			message = new Message(header);
 			
-			String jsonString = null;
-			
-			try {
-				jsonString = messageScanner.nextLine();
+			if(messageType == MessageType.CREATE || messageType == MessageType.UPDATE) {
+				
+				String jsonString = null;
+				
+				try {
+					jsonString = messageScanner.nextLine();
+					
+				}
+				
+				catch(NoSuchElementException e) {
+					messageScanner.close();
+					throw new ParseMessageException("Missing message portions");
+				}
+				
+				
+				JSONObject body = new JSONObject(jsonString);
+				message = new Message(header, body);
+				
 				
 			}
 			
-			catch(NoSuchElementException e) {
-				messageScanner.close();
-				throw new ParseMessageException("Missing message portions");
-			}
-			
-			
-			JSONObject body = new JSONObject(jsonString);
-			message = new Message(header, body);
-			
 		}
+		
 			
 		messageScanner.close();
 		return message;
