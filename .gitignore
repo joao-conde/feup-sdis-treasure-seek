@@ -67,3 +67,6 @@ libs
 
 # Eclipse
 .classpath
+
+#security
+keystore
