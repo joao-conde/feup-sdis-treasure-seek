@@ -323,7 +323,7 @@ public class ProcessMessageTest {
 			
 			JSONObject body = msg.getBody();
 			
-			assertEquals(body.get("userCreatorId"), new Integer(20));
+			assertEquals(body.get("id"), new Integer(20));
 					
 		}
 		
@@ -383,6 +383,40 @@ public class ProcessMessageTest {
 			System.out.println(e.getMessage());
 			
 		}
+		
+	}
+	
+	@Test
+	public void processMessageLogin() {
+		
+		String message = "LOGIN  {token:af546cda34fc}";
+		
+		try {
+			
+			Message msg = Message.parseMessage(message.getBytes());
+			
+			assertEquals(msg.getHeader().getMessageType(),MessageType.LOGIN);
+			assertEquals(msg.getBody().get("token"), "af546cda34fc");
+			
+			
+		} catch (ParseMessageException | JSONException e) {}
+		
+	}
+	
+	@Test
+	public void processMessageLogout() {
+		
+		String message = "LOGOUT  {token:af546cda34fc}";
+		
+		try {
+			
+			Message msg = Message.parseMessage(message.getBytes());
+			
+			assertEquals(msg.getHeader().getMessageType(),MessageType.LOGOUT);
+			assertEquals(msg.getBody().get("token"), "af546cda34fc");
+			
+			
+		} catch (ParseMessageException | JSONException e) {}
 		
 	}
 	

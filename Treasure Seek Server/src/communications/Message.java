@@ -25,9 +25,11 @@ public class Message {
 		CREATE("CREATE"),
 		UPDATE("UPDATE"),
 		DELETE("DELETE"),
-		RETRIEVE("RETRIEVE");
+		RETRIEVE("RETRIEVE"),
+		LOGIN("LOGIN"),
+		LOGOUT("LOGOUT");
 		
-		static final ArrayList<String> types = new ArrayList<String>(Arrays.asList("CREATE","UPDATE","DELETE","RETRIEVE"));
+		static final ArrayList<String> types = new ArrayList<String>(Arrays.asList("CREATE","UPDATE","DELETE","RETRIEVE","LOGIN","LOGOUT"));
 		
 		public String description;
 		
@@ -47,6 +49,10 @@ public class Message {
 					return MessageType.DELETE;
 				case 3:
 					return MessageType.RETRIEVE;
+				case 4:
+					return MessageType.LOGIN;
+				case 5:
+					return MessageType.LOGOUT;
 				default:
 					throw new ParseMessageException("Invalid Protocol Action");
 			
@@ -61,8 +67,12 @@ public class Message {
 		private MessageType messageType;
 		private ArrayList<Pair<Model.ModelType,Integer>> resourcePath;
 		
-		private MessageHeader(MessageType messageType, ArrayList<Pair<Model.ModelType, Integer>> resource) {
+		private MessageHeader(MessageType messageType) {
 			this.messageType = messageType;
+		}
+		
+		private MessageHeader(MessageType messageType, ArrayList<Pair<Model.ModelType, Integer>> resource) {
+			this(messageType);
 			this.resourcePath = resource;
 		}
 		
