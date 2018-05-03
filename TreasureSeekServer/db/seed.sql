@@ -7,7 +7,7 @@ DROP TABLE IF EXISTS user;
 
 CREATE TABLE user (
     id INTEGER PRIMARY KEY AUTOINCREMENT,    
-    username TEXT NOT NULL,
+    username TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL,
     token TEXT NOT NULL,
     admin INTEGER CHECK (admin == 0 || admin == 1) DEFAULT 0
