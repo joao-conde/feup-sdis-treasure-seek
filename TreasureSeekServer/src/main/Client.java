@@ -17,22 +17,27 @@ public class Client {
 	
 	public static void main(String[] args) throws UnknownHostException, IOException {
 		System.out.println("On Client:");
-		//Client cl = new Client();
+		Client cl = new Client();
 	}
 	
 	public Client() throws UnknownHostException, IOException{
 	  
-	  String ask = "RETRIEVE_HOST";
+	  String ask = "RETRIEVE_HOST\n";
 	  String infoFromLoadBalancer;
 
 	  Socket clientSocket = new Socket("localhost", serverPort);
+	  
 	  DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
-	  PrintWriter pw = new PrintWriter(outToServer);
+	  //PrintWriter pw = new PrintWriter(outToServer);
 	  BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 	  
-	  pw.println(ask);
+	  //pw.println(ask);
+	  
+	  outToServer.write(ask.getBytes());
+	  System.out.println("Sent message to lb " + ask);
 	  infoFromLoadBalancer = inFromServer.readLine();
 	  System.out.println("Received from Server: " + infoFromLoadBalancer);
+	  //pw.close();
 	  clientSocket.close();
 
 	}
