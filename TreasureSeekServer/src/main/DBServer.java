@@ -20,8 +20,14 @@ import javax.net.ssl.SSLSocket;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import javax.rmi.ssl.SslRMIServerSocketFactory;
 
+import util.Utils;
+
 public class DBServer extends UnicastRemoteObject implements DBOperations{
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	public static String[] ENC_PROTOCOLS = new String[] {"TLSv1.2"};
 	public static String[] ENC_CYPHER_SUITES = new String[] {"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256"};
 	
@@ -31,12 +37,12 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 
     
     protected DBServer() throws Exception {
-    	super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
+    		super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
     }
     
 	public static void main(String[] args) throws Exception {
 		
-		setSecurityProperties();        
+		Utils.setSecurityProperties();       
 		
 		Registry registry;
 		
@@ -77,16 +83,6 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 		Runtime.getRuntime().addShutdownHook(new Thread(new DBServer.CloseDBServer(dbNo)));
 	}	
 	
-	 private static void setSecurityProperties() {
-		 String password = "123456";
-		 System.setProperty("javax.net.ssl.keyStore", "../security/keys/keystore");
-		 System.setProperty("javax.net.ssl.keyStorePassword", password);
-		 
-		 System.setProperty("javax.net.ssl.trustStore", "../security/certificates/truststore");
-		 System.setProperty("javax.net.ssl.trustStorePassword", password);
-		
-	}
-
 	/**
      * Connect to a sample database
      */

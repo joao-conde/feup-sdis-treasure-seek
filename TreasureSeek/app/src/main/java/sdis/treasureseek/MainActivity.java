@@ -182,7 +182,6 @@ public class MainActivity extends AppCompatActivity {
                 SSLSocket socket = (SSLSocket) factory.createSocket(InetAddress.getByName("172.30.13.189"),SERVER_PORT);
 
 
-
                 socket.setEnabledProtocols(ENC_PROTOCOLS);
                 socket.setEnabledCipherSuites(socket.getSupportedCipherSuites());
 

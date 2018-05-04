@@ -18,18 +18,20 @@ import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import javax.rmi.ssl.SslRMIServerSocketFactory;
 
 import org.json.JSONException;
 
 import communications.Message;
-import communications.Message.MessageType;
 import controller.UserController;
 import util.ParseMessageException;
+import util.Utils;
 
 public class AppServer{
 
@@ -45,7 +47,7 @@ public class AppServer{
   
     public static void main(String[] args) throws RemoteException, NotBoundException, SQLException, UnknownHostException {
 		
-		setSecurityProperties();
+		Utils.setSecurityProperties();
     	
 //		dbServerIPs = args;
 //	
@@ -53,8 +55,8 @@ public class AppServer{
 //                InetAddress.getLocalHost().getHostName(), REGISTRY_PORT,
 //                new SslRMIClientSocketFactory());
 //        DBOperations dbOperations = (DBOperations) registry.lookup("db_1");
-
-//         dbOperations.insertUser("leonardomgt", "leo@exemplo.com", "qwertyuioplkjhgfdsa");
+//
+////         dbOperations.insertUser("leonardomgt", "leo@exemplo.com", "qwertyuioplkjhgfdsa");
  
         String loadBalancerHost = args[0];
         
@@ -67,11 +69,24 @@ public class AppServer{
 		
     		try {
 			announceToLB(loadBalancerHost);
-			receiveCalls();
-		} catch (IOException e) {
+//			receiveCalls();
+		
+    		} catch (SSLHandshakeException e) {
+    			
+    			System.out.println("App Server could not handshake with host " + loadBalancerHost);
 			
-			System.out.println("Could not announce me to load balancer");
+		} catch(UnknownHostException e) {
+			
+			System.out.println("App Server could not connect to host " + loadBalancerHost);
+			
 		}
+    		
+    		catch ( IOException e) {
+			
+    			System.out.println("App Server could not handshake with host " + loadBalancerHost);
+		}
+    		
+    		receiveCalls();
 		
     	
     }
@@ -120,19 +135,7 @@ public class AppServer{
     	
     	
     }
-    
-	private static void setSecurityProperties() {
-		 
-		String password = "123456";
-		System.setProperty("javax.net.ssl.keyStore", "../security/keys/keystore");
-		System.setProperty("javax.net.ssl.keyStorePassword", password);
-		 		
-		System.setProperty("javax.net.ssl.trustStore", "../security/certificates/truststore");
-		System.setProperty("javax.net.ssl.trustStorePassword", password);
-		
-	}
-	
-	
+    	
     class HandleClientRequest implements Runnable {
 		
 		SSLSocket socket;
@@ -179,30 +182,24 @@ public class AppServer{
     }
     
     
-    public void announceToLB(String loadBalancerHost) throws UnknownHostException, IOException {
+    public void announceToLB(String loadBalancerHost) throws UnknownHostException, IOException, SSLHandshakeException {
     	
-    		Socket socket = new Socket(InetAddress.getByName(loadBalancerHost), 7000);
+    		SSLSocket socket = null;
+    		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+    		
+    		socket = (SSLSocket)factory.createSocket(InetAddress.getByName(loadBalancerHost), 7000);
+			socket.setEnabledProtocols(ENC_PROTOCOLS);
+    		socket.setEnabledCipherSuites(socket.getSupportedCipherSuites());
 
     		PrintWriter pw = new PrintWriter(socket.getOutputStream());
-    		Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream())));
     		
-    		pw.println("Ola");
-    		pw.flush();
+//    	Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream())));
+    		
+    		        		
+    		pw.println(Message.MessageType.NEW_SERVER.description + " " + InetAddress.getLocalHost().getHostAddress());
+
     		pw.close();
-    		
-    		
-    		if(scanner.hasNextLine()) {
-        		String response = scanner.nextLine();
-        		System.out.println(response);
-    		}
-    	
-    		
-    		
-    		
-    		scanner.close();
-    		socket.close();
-    		
-    	
+    				
     }
     
     
