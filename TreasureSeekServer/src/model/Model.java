@@ -1,13 +1,16 @@
 package model;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
 import javax.naming.InvalidNameException;
 
-public abstract class Model {
+public abstract class Model implements Serializable {
 	
+	private static final long serialVersionUID = -2172782761913177196L;
+
 	public static enum ModelType {
 		USER("users","user"),
 		TREASURE("treasures","treasure"),
@@ -50,7 +53,7 @@ public abstract class Model {
 	}
 	
 	private ModelType modelType;
-	private HashMap<String,Object> values;
+	private HashMap<String,Object> values = new HashMap<>();
 	private String[] fields;
 	
 	public Model(ModelType modelType, String[] fields) {

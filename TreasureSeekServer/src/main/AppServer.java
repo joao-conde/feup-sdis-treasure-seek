@@ -35,56 +35,79 @@ import util.Utils;
 
 public class AppServer{
 
-	public static final int SERVER_CLIENT_PORT = 2000;
 	public static String[] ENC_PROTOCOLS = new String[] {"TLSv1.2"};
 	public static String[] ENC_CYPHER_SUITES = new String[] {"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256"};
 		
     private static final int REGISTRY_PORT = 1099;
 
 	private static String[] dbServerIPs;
+	
 	private ExecutorService threadPool = Executors.newFixedThreadPool(20);
-    
+	public int serverClientPort;
+	
+	private UserController userController;
+	private DBOperations dbOperations;
+
   
-    public static void main(String[] args) throws RemoteException, NotBoundException, SQLException, UnknownHostException {
+    public static void main(String[] args) {
 		
-		Utils.setSecurityProperties();
-    	
-//		dbServerIPs = args;
-//	
-//		Registry registry = LocateRegistry.getRegistry(
-//                InetAddress.getLocalHost().getHostName(), REGISTRY_PORT,
-//                new SslRMIClientSocketFactory());
-//        DBOperations dbOperations = (DBOperations) registry.lookup("db_1");
-//
-////         dbOperations.insertUser("leonardomgt", "leo@exemplo.com", "qwertyuioplkjhgfdsa");
- 
         String loadBalancerHost = args[0];
+        int clientServerPort = Integer.parseInt(args[1]);
         
-        new AppServer(loadBalancerHost);
+        new AppServer(loadBalancerHost, clientServerPort);
             
     }
     
+    
+    private DBOperations getDBOperations() throws RemoteException, NotBoundException, SQLException, UnknownHostException {
+    	
+    		Registry registry = LocateRegistry.getRegistry(
+    				InetAddress.getLocalHost().getHostName(), REGISTRY_PORT,
+                new SslRMIClientSocketFactory());
+         
+    		dbOperations = (DBOperations) registry.lookup("db_1");
+    		return dbOperations;
+
+    }
+    
 	
-    public AppServer(String loadBalancerHost) {
+    public AppServer(String loadBalancerHost, int serverClientPort) {
 		
+    	Utils.setSecurityProperties();
+    	
+		//dbServerIPs = args;
+	
+    		this.serverClientPort = serverClientPort;
+    	
     		try {
 			announceToLB(loadBalancerHost);
+			this.dbOperations = getDBOperations();    	
+    			this.userController = new UserController(dbOperations);
 //			receiveCalls();
 		
     		} catch (SSLHandshakeException e) {
     			
-    			System.out.println("App Server could not handshake with host " + loadBalancerHost);
+    			System.out.println("App Server could not handshake with load balancer on host " + loadBalancerHost);
 			
 		} catch(UnknownHostException e) {
 			
-			System.out.println("App Server could not connect to host " + loadBalancerHost);
+			System.out.println("App Server could not connect to load balancer or db server");
 			
 		}
     		
     		catch ( IOException e) {
 			
-    			System.out.println("App Server could not handshake with host " + loadBalancerHost);
+    			System.out.println("App Server could not handshake with load balancer on host " + loadBalancerHost);
+		
+    		} catch (NotBoundException e) {
+			
+    			System.out.println("App Server could not connect to remote rmi object" + loadBalancerHost);
+		
+    		} catch (SQLException e) {
+			System.out.println(e.getLocalizedMessage());
 		}
+    		
+    		
     		
     		receiveCalls();
 		
@@ -99,7 +122,7 @@ public class AppServer{
 		
 		try {
 			
-			serverSocket = (SSLServerSocket) factory.createServerSocket(SERVER_CLIENT_PORT);
+			serverSocket = (SSLServerSocket) factory.createServerSocket(serverClientPort);
 			serverSocket.setNeedClientAuth(false);
 			serverSocket.setEnabledProtocols(ENC_PROTOCOLS);			
 			serverSocket.setEnabledCipherSuites(serverSocket.getSupportedCipherSuites());
@@ -159,7 +182,9 @@ public class AppServer{
 					
 					Message messageReceived = Message.parseMessage(messageString);
 					
-					UserController.loginUser(messageReceived.getBody().getString("token"));
+					userController.loginUser(messageReceived.getBody().getString("token"));
+					
+				
 					System.out.println(messageReceived);
 					
 				}
@@ -171,7 +196,6 @@ public class AppServer{
 				
 				
 			} catch (IOException | ParseMessageException | JSONException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 				System.out.println(e.getMessage());
 			}
@@ -196,7 +220,7 @@ public class AppServer{
 //    	Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream())));
     		
     		        		
-    		pw.println(Message.MessageType.NEW_SERVER.description + " " + InetAddress.getLocalHost().getHostAddress());
+    		pw.println(Message.MessageType.NEW_SERVER.description + " " + InetAddress.getLocalHost().getHostAddress() + ":" + this.serverClientPort);
 
     		pw.close();
     				

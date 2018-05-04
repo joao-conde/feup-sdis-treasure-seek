@@ -12,14 +12,13 @@ import java.rmi.server.UnicastRemoteObject;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import javax.net.ssl.SSLServerSocket;
-import javax.net.ssl.SSLServerSocketFactory;
-import javax.net.ssl.SSLSocket;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import javax.rmi.ssl.SslRMIServerSocketFactory;
 
+import model.User;
 import util.Utils;
 
 public class DBServer extends UnicastRemoteObject implements DBOperations{
@@ -33,7 +32,9 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 	
     private static final int REGISTRY_PORT = 1099;
     private static final String DBNAME = "treasureSeekDB.db";
-    private static final String DBURL = "jdbc:sqlite:db/" + DBNAME;
+    private static final String DBURL = "jdbc:sqlite:../db/" + DBNAME;
+    
+    private Connection connection = DriverManager.getConnection(DBURL);
 
     
     protected DBServer() throws Exception {
@@ -83,43 +84,6 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 		Runtime.getRuntime().addShutdownHook(new Thread(new DBServer.CloseDBServer(dbNo)));
 	}	
 	
-	/**
-     * Connect to a sample database
-     */
-	@Override
-	public void insertUser(String username, String email, String token) {
-    	Connection connection = null;
-        try {
-            // create a connection to the database
-            connection = DriverManager.getConnection(DBURL);
-
-            System.out.println("Connection to SQLite has been established.");
-
-            PreparedStatement stmt = connection.prepareStatement(
-            	"INSERT INTO user (username, email, token) VALUES (?, ?, ?)"
-            );
-
-            stmt.setString(1, username);
-            stmt.setString(2, email);
-            stmt.setString(3, token);
-            stmt.executeUpdate();
-            
-            System.out.println("User inserted with success.");
-
-            
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException ex) {
-                System.out.println(ex.getMessage());
-            }
-        }
-    }
-	
 	static class CloseDBServer implements Runnable{
 		int dbNo;
 	
@@ -137,6 +101,68 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 				e.printStackTrace();
 			}
 		};
+	}
+	
+	@Override
+	public boolean insertUser(long id, String email, String token) {
+    	
+        try {
+
+            PreparedStatement stmt = connection.prepareStatement(
+            	"INSERT INTO user (id, email, token) VALUES (?, ?, ?)"
+            );
+
+            stmt.setLong(1, id);
+            stmt.setString(2, email);
+            stmt.setString(3, token);
+            stmt.executeUpdate();
+            
+            System.out.println("User inserted with success.");
+            return true;
+
+            
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+            return false;
+        } 
+//        finally {
+//            try {
+//                if (connection != null) {
+//                    connection.close();
+//                }
+//            } catch (SQLException ex) {
+//                System.out.println(ex.getMessage());
+//            }
+//        }
+    }
+
+	@Override
+	public User getUser(long id) throws RemoteException, SQLException {
+		
+		PreparedStatement stmt = connection.prepareStatement(
+			"SELECT * from user WHERE id = ?"
+        );
+		
+		stmt.setLong(1, id);
+		ResultSet result = stmt.executeQuery();
+		
+		if(!result.next())
+			return null;
+				
+		User user = new User();
+		user.setValue("id", result.getLong(1));
+		user.setValue("email", result.getString(2));
+		user.setValue("token", result.getString(3));
+		user.setValue("admin", result.getBoolean(4));
+				
+		return user;
+		
+	}
+
+	@Override
+	public void updateUser(long id, String email, String token) throws RemoteException, SQLException {
+		// TODO Auto-generated method stub
+		
 	}
 
 }
