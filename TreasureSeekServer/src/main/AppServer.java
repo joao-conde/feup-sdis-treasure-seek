@@ -42,14 +42,14 @@ public class AppServer{
 		
 		setSecurityProperties();
     	
-		dbServerIPs = args;
-	
-		Registry registry = LocateRegistry.getRegistry(
-                InetAddress.getLocalHost().getHostName(), REGISTRY_PORT,
-                new SslRMIClientSocketFactory());
-        DBOperations dbOperations = (DBOperations) registry.lookup("db_2");
-
-//         dbOperations.insertUser("leonardomgt", "leo@exemplo.com", "qwertyuioplkjhgfdsa");
+//		dbServerIPs = args;
+//	
+//		Registry registry = LocateRegistry.getRegistry(
+//                InetAddress.getLocalHost().getHostName(), REGISTRY_PORT,
+//                new SslRMIClientSocketFactory());
+//        DBOperations dbOperations = (DBOperations) registry.lookup("db_2");
+//
+////         dbOperations.insertUser("leonardomgt", "leo@exemplo.com", "qwertyuioplkjhgfdsa");
  
         
         new AppServer();
@@ -111,10 +111,10 @@ public class AppServer{
     
 	private static void setSecurityProperties() {
 		 String password = "123456";
-		 System.setProperty("javax.net.ssl.keyStore", "security/keys/keystore");
+		 System.setProperty("javax.net.ssl.keyStore", "../security/keys/keystore");
 		 System.setProperty("javax.net.ssl.keyStorePassword", password);
 		 
-		 System.setProperty("javax.net.ssl.trustStore", "security/certificates/truststore");
+		 System.setProperty("javax.net.ssl.trustStore", "../security/certificates/truststore");
 		 System.setProperty("javax.net.ssl.trustStorePassword", password);
 		
 	}
@@ -136,16 +136,21 @@ public class AppServer{
 				BufferedReader br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
 				Scanner scanner = new Scanner(br);
 				
-				String messageString = scanner.nextLine();
-				System.out.println(messageString);
+				if(scanner.hasNextLine()) {
+					
+					String messageString = scanner.nextLine();
+					System.out.println(messageString);
+					
+					Message messageReceived = Message.parseMessage(messageString);
+					
+					System.out.println(messageReceived);
+					
+				}
 				
-				
-				Message messageReceived = Message.parseMessage(scanner.nextLine());
-				
-				System.out.println(messageReceived.getHeader().getMessageType());
-				
-				
+			
 				scanner.close();
+				
+				return;
 				
 				
 			} catch (IOException | ParseMessageException | JSONException e) {

@@ -11,7 +11,8 @@ import javax.naming.InvalidNameException;
 import util.ParseMessageException;
 import util.Utils.Pair;
 
-import org.json.*;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import model.Model;
 import model.Model.ModelType;
@@ -119,6 +120,32 @@ public class Message {
 		return body;
 	}
 	
+	@Override
+	public String toString() {
+		
+		String res = "";
+		
+		res += "\nMessage Header:";
+		res += ("\n\tMessage Type: " + this.header.getMessageType());
+		res += "\n\tMessage Resource Path: \n";
+		
+		for(Pair<ModelType,Integer> pair : this.header.resourcePath) {
+			
+			res += "\t\t Resource: ";
+			res += pair.key;
+			res += ", id : ";
+			res += (pair.value + "\n");
+			
+		}
+		
+		res += "Message Body: \n"; 
+		
+		res += this.body.toString();
+		
+		return res;
+		
+	}
+	
 	/**
 	 * Parse a raw message and builds a message object with everything needed 
 	 * to identify resource and action to perform
@@ -170,7 +197,7 @@ public class Message {
 			header.setResourcePath(pathToResource);
 			message = new Message(header);
 			
-			if(messageType == MessageType.CREATE || messageType == MessageType.UPDATE) {
+			if(messageType == MessageType.CREATE || messageType == MessageType.UPDATE || messageType == MessageType.LOGIN || messageType == MessageType.LOGOUT) {
 				
 				String jsonString = null;
 				

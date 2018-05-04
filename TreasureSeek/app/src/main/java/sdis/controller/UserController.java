@@ -7,6 +7,7 @@ import org.json.JSONObject;
 
 import sdis.communications.ClientMessage;
 import sdis.model.GlobalModel;
+import sdis.model.Model;
 import sdis.model.User;
 import sdis.util.ParseMessageException;
 
@@ -36,7 +37,7 @@ public class UserController {
 
 
         try {
-            message =  ClientMessage.buildRequestMessage(ClientMessage.MessageType.LOGIN.description, json);
+            message =  ClientMessage.buildRequestMessage(ClientMessage.MessageType.LOGIN.description, Model.ModelType.USER.getResourceName() ,json);
         } catch (JSONException | ParseMessageException e) {
             e.printStackTrace();
         }

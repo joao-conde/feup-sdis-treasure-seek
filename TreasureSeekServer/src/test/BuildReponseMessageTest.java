@@ -1,6 +1,7 @@
 package test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import static org.junit.Assert.assertEquals;
 
 import org.json.JSONArray;
 import org.json.JSONException;

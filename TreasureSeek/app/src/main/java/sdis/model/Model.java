@@ -32,15 +32,15 @@ public abstract class Model {
 
         }
 
-        private ModelType(String modelName, String tableName) {
-            this.modelName = modelName;
+        private ModelType(String resourceName, String tableName) {
+            this.resourceName = resourceName;
             this.tableName = tableName;
         }
 
-        private String modelName;
+        private String resourceName;
         private String tableName;
-        public String getModelName() {
-            return modelName;
+        public String getResourceName() {
+            return resourceName;
         }
         public String getTableName() {
             return tableName;

@@ -17,7 +17,7 @@ public class Client {
 	
 	public static void main(String[] args) throws UnknownHostException, IOException {
 		System.out.println("On Client:");
-		Client cl = new Client();
+		//Client cl = new Client();
 	}
 	
 	public Client() throws UnknownHostException, IOException{
