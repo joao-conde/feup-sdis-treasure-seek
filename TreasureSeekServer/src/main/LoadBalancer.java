@@ -3,6 +3,7 @@ package main;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -10,19 +11,32 @@ import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
+
 import org.json.JSONException;
 
 import communications.Message;
 import util.ParseMessageException;
 import util.Utils.Pair;
 
+
+
 public class LoadBalancer {
 
+	public static final int CLIENT_PORT = 6789;
+	public static final int SERVER_PORT = 7000;
+	public static String[] ENC_PROTOCOLS = new String[] {"TLSv1.2"};
+
+	
 	private final int THREAD_POOL_SIZE = 100;
-	private final int SERVER_PORT = 6789;
+	
 
 	private ArrayList<Pair<String, String>> availableServers;
-	private ServerSocket serverSocket;
+	private ServerSocket clientSocket;
+	private SSLServerSocket serverSocket;
+	
 	private ExecutorService threadPool;
 
 	public static void main(String[] args) throws IOException, ParseMessageException, JSONException {
@@ -33,13 +47,13 @@ public class LoadBalancer {
 	private class ConnectionHandler implements Runnable {
 
 		private Socket socket;
-		private InputStreamReader socketIn;
-		private DataOutputStream socketOut;
+		private Scanner socketIn;
+		private PrintWriter socketOut;
 
 		public ConnectionHandler(Socket socket) throws IOException {
 			this.socket = socket;
-			this.socketIn = new InputStreamReader(socket.getInputStream());
-			this.socketOut = new DataOutputStream(socket.getOutputStream());
+			this.socketIn = new Scanner(new InputStreamReader(socket.getInputStream()));
+			this.socketOut = new PrintWriter(new DataOutputStream(socket.getOutputStream()));
 		}
 
 		@Override
@@ -50,7 +64,9 @@ public class LoadBalancer {
 				if(message != null)
 					handleMessage(message);
 				
-				socket.close();
+				socketIn.close();
+				socketOut.close();
+				socket.close();				
 				
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -61,10 +77,10 @@ public class LoadBalancer {
 		public Message readMessage() {
 
 			try {
-				Scanner in = new Scanner(this.socketIn);
-				String receivedMsg = in.nextLine();
-				//in.close(); if uncommented socket closes here, preventing
-				//further message sending
+				
+				System.out.println("BEFORE READING");
+				String receivedMsg = socketIn.nextLine();
+				System.out.println("AFTER READING");
 
 				System.out.println("Received message: " + receivedMsg);
 
@@ -85,12 +101,12 @@ public class LoadBalancer {
 
 			case RETRIEVE_HOST:
 				Pair<String, String> serverInfo = selectServer();
-				this.socketOut.writeBytes(serverInfo.key + " " + serverInfo.value + '\n');
+				this.socketOut.println(serverInfo.key + " " + serverInfo.value + '\n');
 				break;
 
 			case NEW_SERVER:
 				// TODO add server IP and port to availableServers
-				System.out.println("NEW_SEVER MESSAGE");
+				System.out.println("NEW_SEVER MESSAGE\n" + message.toString());
 				break;
 
 			default:
@@ -102,25 +118,68 @@ public class LoadBalancer {
 
 	public LoadBalancer() throws IOException, ParseMessageException, JSONException {
 
-		this.serverSocket = new ServerSocket(SERVER_PORT);
-		this.threadPool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
-		this.availableServers = new ArrayList<Pair<String, String>>();
+		threadPool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
+		availableServers = new ArrayList<Pair<String, String>>();
+		
+		clientSocket = new ServerSocket(CLIENT_PORT);
+		
+		SSLServerSocketFactory factory = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
+		serverSocket = (SSLServerSocket) factory.createServerSocket(SERVER_PORT);
+		serverSocket.setNeedClientAuth(false);
+		serverSocket.setEnabledProtocols(ENC_PROTOCOLS);			
+		serverSocket.setEnabledCipherSuites(serverSocket.getSupportedCipherSuites());
 
 		// hard-coded for now, will come from app server
 		availableServers.add(new Pair<String, String>("IP1", "60"));
 		availableServers.add(new Pair<String, String>("IP2", "61"));
 		availableServers.add(new Pair<String, String>("IP3", "62"));
 
-		dispatcher();
+		clientDispatcher();
+		serverDispatcher();
 
 	}
 
-	public void dispatcher() throws IOException, ParseMessageException, JSONException {
+	public void clientDispatcher() throws IOException, ParseMessageException, JSONException {
 
-		while (true) {
-			Socket connectionSocket = this.serverSocket.accept();
-			threadPool.execute(new ConnectionHandler(connectionSocket));
+		class ClientListener implements Runnable{
+			
+			@Override
+			public void run() {
+				while (true) {
+					Socket connectionSocket;
+					try {
+						connectionSocket = clientSocket.accept();
+						threadPool.execute(new ConnectionHandler(connectionSocket));
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}
 		}
+		
+		new Thread(new ClientListener()).start();
+
+	}
+	
+	public void serverDispatcher() throws IOException, ParseMessageException, JSONException {
+
+		class ClientListener implements Runnable{
+			
+			@Override
+			public void run() {
+				while (true) {
+					SSLSocket connectionSocket;
+					try {
+						connectionSocket = (SSLSocket) serverSocket.accept();
+						threadPool.execute(new ConnectionHandler(connectionSocket));
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+		
+		new Thread(new ClientListener()).start();
 
 	}
 
