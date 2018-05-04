@@ -1,9 +1,14 @@
 package sdis.treasureseek;
 
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.Signature;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Base64;
+import android.util.Log;
 import android.widget.TextView;
 
 import com.facebook.AccessToken;
@@ -23,6 +28,7 @@ import java.net.InetAddress;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 import javax.net.ssl.SSLContext;
@@ -50,10 +56,38 @@ public class MainActivity extends AppCompatActivity {
 
     SSLContext sslContext;
 
+    private void getHashKey() {
+
+        try {
+            PackageInfo info = getPackageManager().getPackageInfo(
+                    "sdis.treasureseek",
+                    PackageManager.GET_SIGNATURES);
+            for (Signature signature : info.signatures) {
+                MessageDigest md = MessageDigest.getInstance("SHA");
+                md.update(signature.toByteArray());
+                Log.d("KeyHash:", Base64.encodeToString(md.digest(), Base64.DEFAULT));
+                System.out.println("Hash: " + Base64.encodeToString(md.digest(), Base64.DEFAULT));
+
+            }
+        } catch (PackageManager.NameNotFoundException e) {
+
+            System.out.println(e);
+
+        } catch (NoSuchAlgorithmException e) {
+
+            System.out.println(e);
+
+        }
+
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
+
+        getHashKey();
+
         System.setProperty("java.net.preferIPv4Stack" , "true");
         setContentView(R.layout.activity_main);
 
@@ -142,7 +176,12 @@ public class MainActivity extends AppCompatActivity {
             try  {
 
                 SSLSocketFactory factory = sslContext.getSocketFactory();
-                SSLSocket socket = (SSLSocket) factory.createSocket(InetAddress.getByName("10.0.2.2"),SERVER_PORT);
+                //SSLSocket socket = (SSLSocket) factory.createSocket(InetAddress.getByName("10.0.2.2"),SERVER_PORT);
+
+
+                SSLSocket socket = (SSLSocket) factory.createSocket(InetAddress.getByName("172.30.13.189"),SERVER_PORT);
+
+
 
                 socket.setEnabledProtocols(ENC_PROTOCOLS);
                 socket.setEnabledCipherSuites(socket.getSupportedCipherSuites());

@@ -16,6 +16,7 @@ import java.sql.SQLException;
 
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import javax.rmi.ssl.SslRMIServerSocketFactory;
 
@@ -40,9 +41,10 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 		Registry registry;
 		
 		try{
+			
 			registry = LocateRegistry.createRegistry(REGISTRY_PORT,
 		            new SslRMIClientSocketFactory(),
-		            new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
+		            new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, true));
             System.out.println("registry created.");
 		}
 		catch(ExportException e){
@@ -77,10 +79,10 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 	
 	 private static void setSecurityProperties() {
 		 String password = "123456";
-		 System.setProperty("javax.net.ssl.keyStore", "security/keys/keystore");
+		 System.setProperty("javax.net.ssl.keyStore", "../security/keys/keystore");
 		 System.setProperty("javax.net.ssl.keyStorePassword", password);
 		 
-		 System.setProperty("javax.net.ssl.trustStore", "security/certificates/truststore");
+		 System.setProperty("javax.net.ssl.trustStore", "../security/certificates/truststore");
 		 System.setProperty("javax.net.ssl.trustStorePassword", password);
 		
 	}

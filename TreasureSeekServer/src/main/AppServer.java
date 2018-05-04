@@ -1,10 +1,13 @@
 package main;
 
 import java.net.InetAddress;
+import java.net.Socket;
 import java.net.UnknownHostException;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -24,6 +27,8 @@ import javax.rmi.ssl.SslRMIServerSocketFactory;
 import org.json.JSONException;
 
 import communications.Message;
+import communications.Message.MessageType;
+import controller.UserController;
 import util.ParseMessageException;
 
 public class AppServer{
@@ -47,19 +52,27 @@ public class AppServer{
 //		Registry registry = LocateRegistry.getRegistry(
 //                InetAddress.getLocalHost().getHostName(), REGISTRY_PORT,
 //                new SslRMIClientSocketFactory());
-//        DBOperations dbOperations = (DBOperations) registry.lookup("db_2");
-//
-////         dbOperations.insertUser("leonardomgt", "leo@exemplo.com", "qwertyuioplkjhgfdsa");
+//        DBOperations dbOperations = (DBOperations) registry.lookup("db_1");
+
+//         dbOperations.insertUser("leonardomgt", "leo@exemplo.com", "qwertyuioplkjhgfdsa");
  
+        String loadBalancerHost = args[0];
         
-        new AppServer();
+        new AppServer(loadBalancerHost);
             
     }
     
 	
-    public AppServer() {
+    public AppServer(String loadBalancerHost) {
 		
-		receiveCalls();
+    		try {
+			announceToLB(loadBalancerHost);
+			receiveCalls();
+		} catch (IOException e) {
+			
+			System.out.println("Could not announce me to load balancer");
+		}
+		
     	
     }
 	
@@ -75,7 +88,6 @@ public class AppServer{
 			serverSocket.setNeedClientAuth(false);
 			serverSocket.setEnabledProtocols(ENC_PROTOCOLS);			
 			serverSocket.setEnabledCipherSuites(serverSocket.getSupportedCipherSuites());
-			
 			
 			
 			while(true) {
@@ -110,12 +122,13 @@ public class AppServer{
     }
     
 	private static void setSecurityProperties() {
-		 String password = "123456";
-		 System.setProperty("javax.net.ssl.keyStore", "../security/keys/keystore");
-		 System.setProperty("javax.net.ssl.keyStorePassword", password);
 		 
-		 System.setProperty("javax.net.ssl.trustStore", "../security/certificates/truststore");
-		 System.setProperty("javax.net.ssl.trustStorePassword", password);
+		String password = "123456";
+		System.setProperty("javax.net.ssl.keyStore", "../security/keys/keystore");
+		System.setProperty("javax.net.ssl.keyStorePassword", password);
+		 		
+		System.setProperty("javax.net.ssl.trustStore", "../security/certificates/truststore");
+		System.setProperty("javax.net.ssl.trustStorePassword", password);
 		
 	}
 	
@@ -143,6 +156,7 @@ public class AppServer{
 					
 					Message messageReceived = Message.parseMessage(messageString);
 					
+					UserController.loginUser(messageReceived.getBody().getString("token"));
 					System.out.println(messageReceived);
 					
 				}
@@ -165,6 +179,31 @@ public class AppServer{
     }
     
     
+    public void announceToLB(String loadBalancerHost) throws UnknownHostException, IOException {
+    	
+    		Socket socket = new Socket(InetAddress.getByName(loadBalancerHost), 7000);
+
+    		PrintWriter pw = new PrintWriter(socket.getOutputStream());
+    		Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream())));
+    		
+    		pw.println("Ola");
+    		pw.flush();
+    		pw.close();
+    		
+    		
+    		if(scanner.hasNextLine()) {
+        		String response = scanner.nextLine();
+        		System.out.println(response);
+    		}
+    	
+    		
+    		
+    		
+    		scanner.close();
+    		socket.close();
+    		
+    	
+    }
     
     
     

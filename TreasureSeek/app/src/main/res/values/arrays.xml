@@ -3,5 +3,6 @@
 <resources>
     <string-array name="facebook_permissions">
         <item>email</item>
+        <item>user_friends</item>
     </string-array>
 </resources>
