@@ -28,17 +28,16 @@ public class Client {
 	  Socket clientSocket = new Socket("localhost", serverPort);
 	  
 	  DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
-	  //PrintWriter pw = new PrintWriter(outToServer);
+	  PrintWriter pw = new PrintWriter(outToServer);
 	  BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 	  
-	  //pw.println(ask);
+	  pw.println(ask);
 	  
-	  outToServer.write(ask.getBytes());
+	  //outToServer.write(ask.getBytes());
 	  System.out.println("Sent message to lb " + ask);
-	  Thread.sleep(2000);
 	  infoFromLoadBalancer = inFromServer.readLine();
 	  System.out.println("Received from Server: " + infoFromLoadBalancer);
-	  //pw.close();
+	  pw.close();
 	  clientSocket.close();
 
 	}

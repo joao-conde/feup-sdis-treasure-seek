@@ -60,10 +60,14 @@ public class LoadBalancer {
 		@Override
 		public void run() {
 			try {
-				Message message = null;
 				
+				Message message = null;
+
+				System.out.println("BEFORE NEXTLINE CHECK");
 				if(socketIn.hasNextLine()) {
+					System.out.println("HAS NEXT LINE");
 					message = Message.parseMessage(socketIn.nextLine());
+					System.out.println("PARSED MESSAGE");
 				}
 				
 				socketIn.close();
@@ -82,7 +86,6 @@ public class LoadBalancer {
 		public void handleMessage(Message message) throws IOException {
 			
 			Message.MessageType msgType = message.getHeader().getMessageType();
-			
 			switch (msgType) {
 
 			case RETRIEVE_HOST:
@@ -109,7 +112,7 @@ public class LoadBalancer {
 		
 		clientSocket = new ServerSocket(CLIENT_PORT);
 		
-		// hard-coded for now, will come from app server
+		// hard-coded for now, will come from app-server
 		availableServers.add(new Pair<String, String>("IP1", "60"));
 		availableServers.add(new Pair<String, String>("IP2", "61"));
 		availableServers.add(new Pair<String, String>("IP3", "62"));
@@ -121,6 +124,8 @@ public class LoadBalancer {
 
 	public void clientDispatcher() throws IOException, ParseMessageException, JSONException {
 
+		System.out.println("Hello from client dispatcher thread");
+		
 		class ClientListener implements Runnable{
 			
 			@Override
@@ -142,6 +147,8 @@ public class LoadBalancer {
 	}
 	
 	public void serverDispatcher() throws IOException, ParseMessageException, JSONException {
+
+		System.out.println("Hello from server dispatcher thread");
 
 		class ServerListener implements Runnable {
 			
@@ -176,8 +183,6 @@ public class LoadBalancer {
 					e.printStackTrace();
 					
 				}
-				
-				
 				
 			}
 		}
