@@ -15,12 +15,12 @@ public class Client {
 	
 	static int serverPort = 6789;
 	
-	public static void main(String[] args) throws UnknownHostException, IOException {
+	public static void main(String[] args) throws UnknownHostException, IOException, InterruptedException {
 		System.out.println("On Client:");
 		Client cl = new Client();
 	}
 	
-	public Client() throws UnknownHostException, IOException{
+	public Client() throws UnknownHostException, IOException, InterruptedException{
 	  
 	  String ask = "RETRIEVE_HOST\n";
 	  String infoFromLoadBalancer;
@@ -28,16 +28,16 @@ public class Client {
 	  Socket clientSocket = new Socket("localhost", serverPort);
 	  
 	  DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
-	  //PrintWriter pw = new PrintWriter(outToServer);
+	  PrintWriter pw = new PrintWriter(outToServer);
 	  BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 	  
-	  //pw.println(ask);
+	  pw.println(ask);
 	  
-	  outToServer.write(ask.getBytes());
+	  //outToServer.write(ask.getBytes());
 	  System.out.println("Sent message to lb " + ask);
 	  infoFromLoadBalancer = inFromServer.readLine();
 	  System.out.println("Received from Server: " + infoFromLoadBalancer);
-	  //pw.close();
+	  pw.close();
 	  clientSocket.close();
 
 	}

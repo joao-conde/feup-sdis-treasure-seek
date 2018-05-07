@@ -36,12 +36,11 @@ public class LoadBalancer {
 
 	private ArrayList<Pair<String, String>> availableServers;
 	private ServerSocket clientSocket;
-	private SSLServerSocket serverSocket;
 	
 	private ExecutorService threadPool;
 
 	public static void main(String[] args) throws IOException, ParseMessageException, JSONException {
-		System.out.println("On Load Balancer");
+		System.out.println("---Load Balancer---");
 		Utils.setSecurityProperties();
 		new LoadBalancer();
 	}
@@ -61,53 +60,32 @@ public class LoadBalancer {
 		@Override
 		public void run() {
 			try {
-							
-				Scanner s = new Scanner(new InputStreamReader(socket.getInputStream()));
-				if(s.hasNextLine()) {
-					System.out.println(s.nextLine());
+				
+				Message message = null;
+
+				System.out.println("BEFORE NEXTLINE CHECK");
+				if(socketIn.hasNextLine()) {
+					System.out.println("HAS NEXT LINE");
+					message = Message.parseMessage(socketIn.nextLine());
+					System.out.println("PARSED MESSAGE");
 				}
 				
-				s.close();
-					
-					
-//				Message message = readMessage();
-//				
-//				if(message != null)
-//					handleMessage(message);
-//				
-//				socketIn.close();
-//				socketOut.close();
-//				socket.close();				
+				socketIn.close();
+										
+				if(message != null)
+					handleMessage(message);
 				
-			} catch (IOException e) {
+				socket.close();				
+				
+			} catch (IOException | ParseMessageException | JSONException e) {
 				e.printStackTrace();
 			}
 			
-		}
-
-		public Message readMessage() {
-
-			try {
-				
-				System.out.println("BEFORE READING");
-				String receivedMsg = socketIn.nextLine();
-				System.out.println("AFTER READING");
-
-				System.out.println("Received message: " + receivedMsg);
-
-				return Message.parseMessage(receivedMsg);
-
-			} catch (ParseMessageException | JSONException e) {
-				e.printStackTrace();
-			}
-			
-			return null;
 		}
 		
 		public void handleMessage(Message message) throws IOException {
 			
 			Message.MessageType msgType = message.getHeader().getMessageType();
-			
 			switch (msgType) {
 
 			case RETRIEVE_HOST:
@@ -134,24 +112,20 @@ public class LoadBalancer {
 		
 		clientSocket = new ServerSocket(CLIENT_PORT);
 		
-//		SSLServerSocketFactory factory = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
-//		serverSocket = (SSLServerSocket) factory.createServerSocket(SERVER_PORT);
-//		serverSocket.setNeedClientAuth(false);
-//		serverSocket.setEnabledProtocols(ENC_PROTOCOLS);			
-//		serverSocket.setEnabledCipherSuites(serverSocket.getSupportedCipherSuites());
-
-		// hard-coded for now, will come from app server
+		// hard-coded for now, will come from app-server
 		availableServers.add(new Pair<String, String>("IP1", "60"));
 		availableServers.add(new Pair<String, String>("IP2", "61"));
 		availableServers.add(new Pair<String, String>("IP3", "62"));
 
-		//clientDispatcher();
+		clientDispatcher();
 		serverDispatcher();
 
 	}
 
 	public void clientDispatcher() throws IOException, ParseMessageException, JSONException {
 
+		System.out.println("Hello from client dispatcher thread");
+		
 		class ClientListener implements Runnable{
 			
 			@Override
@@ -174,6 +148,8 @@ public class LoadBalancer {
 	
 	public void serverDispatcher() throws IOException, ParseMessageException, JSONException {
 
+		System.out.println("Hello from server dispatcher thread");
+
 		class ServerListener implements Runnable {
 			
 			@Override
@@ -192,10 +168,7 @@ public class LoadBalancer {
 					while (true) {
 						SSLSocket connectionSocket;
 						try {
-							connectionSocket = (SSLSocket) socket.accept();
-							
-							System.out.println("Message Received");
-							
+							connectionSocket = (SSLSocket) socket.accept();							
 							threadPool.execute(new ConnectionHandler(connectionSocket));
 							
 						} catch (IOException e) {
@@ -210,8 +183,6 @@ public class LoadBalancer {
 					e.printStackTrace();
 					
 				}
-				
-				
 				
 			}
 		}
