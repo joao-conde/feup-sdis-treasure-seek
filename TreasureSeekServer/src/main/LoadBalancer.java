@@ -64,7 +64,7 @@ public class LoadBalancer {
 				String reply = null;
 				Message message = null;
 				Scanner socketIn = new Scanner(new InputStreamReader(socket.getInputStream()));
-				PrintWriter socketOut = new PrintWriter(socket.getOutputStream());
+				PrintWriter socketOut = new PrintWriter(socket.getOutputStream(), true);
 
 				if(socketIn.hasNextLine()) {
 					message = Message.parseMessage(socketIn.nextLine());
@@ -75,7 +75,7 @@ public class LoadBalancer {
 				
 			
 				socketOut.println(reply);
-				socketOut.flush();
+
 				System.out.println("SENT MESSAGE " + reply);
 				
 
