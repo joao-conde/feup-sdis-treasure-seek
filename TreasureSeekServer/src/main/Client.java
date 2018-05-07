@@ -32,6 +32,7 @@ public class Client {
 	  BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 	  
 	  pw.println(ask);
+	  pw.flush();
 	  
 	  //outToServer.write(ask.getBytes());
 	  System.out.println("Sent message to lb " + ask);

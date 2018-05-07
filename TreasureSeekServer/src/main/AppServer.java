@@ -50,7 +50,7 @@ public class AppServer{
 	private DBOperations dbOperations;
 
   
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
 		
         String loadBalancerHost = args[0];
         int clientServerPort = Integer.parseInt(args[1]);
@@ -72,7 +72,7 @@ public class AppServer{
     }
     
 	
-    public AppServer(String loadBalancerHost, int serverClientPort) {
+    public AppServer(String loadBalancerHost, int serverClientPort) throws InterruptedException {
 		
     	Utils.setSecurityProperties();
     	
@@ -210,18 +210,18 @@ public class AppServer{
     }
     
     
-    public void announceToLB(String loadBalancerHost) throws UnknownHostException, IOException, SSLHandshakeException {
+    public void announceToLB(String loadBalancerHost) throws UnknownHostException, IOException, SSLHandshakeException, InterruptedException {
     	
     		SSLSocket socket = null;
     		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
     		
-    		socket = (SSLSocket)factory.createSocket(InetAddress.getByName(loadBalancerHost), 7000);
+    		socket = (SSLSocket)factory.createSocket(InetAddress.getByName(loadBalancerHost), LoadBalancer.SERVER_PORT);
 			socket.setEnabledProtocols(ENC_PROTOCOLS);
     		socket.setEnabledCipherSuites(socket.getSupportedCipherSuites());
 
     		PrintWriter pw = new PrintWriter(socket.getOutputStream());
     		
-//    	Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream())));
+    		Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream())));
     		
     		JSONObject body = new JSONObject();
     		try {
@@ -233,7 +233,13 @@ public class AppServer{
     		
     		        		
     		pw.println(Message.MessageType.NEW_SERVER.description + " " + body.toString());
-
+    		pw.flush();
+    		
+    		if(scanner.hasNextLine()){
+    		    System.out.println(scanner.nextLine());
+    		}
+    		//System.out.println(scanner.nextLine());
+    		scanner.close();
     		pw.close();
     				
     }
