@@ -15,9 +15,13 @@ import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
 
+import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import communications.Message;
+import communications.ReplyMessage;
+import communications.ReplyMessage.ReplyMessageStatus;
 import util.ParseMessageException;
 import util.Utils;
 import util.Utils.Pair;
@@ -48,34 +52,35 @@ public class LoadBalancer {
 	private class ConnectionHandler implements Runnable {
 
 		private Socket socket;
-		private Scanner socketIn;
-		private PrintWriter socketOut;
-
+		
 		public ConnectionHandler(Socket socket) throws IOException {
 			this.socket = socket;
-			this.socketIn = new Scanner(new InputStreamReader(socket.getInputStream()));
-			this.socketOut = new PrintWriter(new DataOutputStream(socket.getOutputStream()));
 		}
 
 		@Override
 		public void run() {
 			try {
 				
+				String reply = null;
 				Message message = null;
+				Scanner socketIn = new Scanner(new InputStreamReader(socket.getInputStream()));
+				PrintWriter socketOut = new PrintWriter(socket.getOutputStream(), true);
 
-				System.out.println("BEFORE NEXTLINE CHECK");
 				if(socketIn.hasNextLine()) {
-					System.out.println("HAS NEXT LINE");
 					message = Message.parseMessage(socketIn.nextLine());
-					System.out.println("PARSED MESSAGE");
 				}
-				
-				socketIn.close();
-										
+														
 				if(message != null)
-					handleMessage(message);
+					reply = handleMessage(message);
 				
-				socket.close();				
+			
+				socketOut.println(reply);
+
+				System.out.println("SENT MESSAGE " + reply);
+				
+
+				socketIn.close();
+				socketOut.close();
 				
 			} catch (IOException | ParseMessageException | JSONException e) {
 				e.printStackTrace();
@@ -83,26 +88,65 @@ public class LoadBalancer {
 			
 		}
 		
-		public void handleMessage(Message message) throws IOException {
+		public String handleMessage(Message message) throws IOException, JSONException {
+			
+			String reply = null;
+			JSONArray jsonArray = new JSONArray();
+			JSONObject json = new JSONObject();
 			
 			Message.MessageType msgType = message.getHeader().getMessageType();
+			
+			System.out.println(message);
+
+			
 			switch (msgType) {
 
 			case RETRIEVE_HOST:
 				Pair<String, String> serverInfo = selectServer();
-				this.socketOut.println(serverInfo.key + " " + serverInfo.value + '\n');
+				
+				if(serverInfo != null) {
+					json.put("host", serverInfo.key);
+					json.put("port", serverInfo.value);
+					jsonArray.put(json);
+					reply = ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK, jsonArray);
+				}
+					
+				else {
+					json.put("message", "No available server");
+					jsonArray.put(json);
+					reply = ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST, jsonArray);
+				}			
+				
 				break;
 
 			case NEW_SERVER:
-				// TODO add server IP and port to availableServers
-				System.out.println("NEW_SEVER MESSAGE\n" + message.toString());
+			
+				Pair<String,String> serverID = new Pair<String,String>(message.getBody().get("host").toString(), 
+						message.getBody().get("port").toString());
+				
+				if(!availableServers.contains(serverID)) {
+					System.out.println("ADDING NEW SERVER");
+					availableServers.add(serverID);
+					reply = ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK);
+				}
+				else {
+					json.put("message", "Server ID (<IP> <port>) already in use");
+					jsonArray.put(json);
+					reply = ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST, jsonArray);
+				}
+						
 				break;
 
 			default:
+				reply = ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 				break;
 
 			}
+			
+			return reply;
 		}
+		
+		
 	}
 
 	public LoadBalancer() throws IOException, ParseMessageException, JSONException {
@@ -113,9 +157,9 @@ public class LoadBalancer {
 		clientSocket = new ServerSocket(CLIENT_PORT);
 		
 		// hard-coded for now, will come from app-server
-		availableServers.add(new Pair<String, String>("IP1", "60"));
-		availableServers.add(new Pair<String, String>("IP2", "61"));
-		availableServers.add(new Pair<String, String>("IP3", "62"));
+		//availableServers.add(new Pair<String, String>("IP1", "60"));
+		//availableServers.add(new Pair<String, String>("IP2", "61"));
+		//availableServers.add(new Pair<String, String>("IP3", "62"));
 
 		clientDispatcher();
 		serverDispatcher();
@@ -123,8 +167,6 @@ public class LoadBalancer {
 	}
 
 	public void clientDispatcher() throws IOException, ParseMessageException, JSONException {
-
-		System.out.println("Hello from client dispatcher thread");
 		
 		class ClientListener implements Runnable{
 			
@@ -147,8 +189,6 @@ public class LoadBalancer {
 	}
 	
 	public void serverDispatcher() throws IOException, ParseMessageException, JSONException {
-
-		System.out.println("Hello from server dispatcher thread");
 
 		class ServerListener implements Runnable {
 			
@@ -192,7 +232,10 @@ public class LoadBalancer {
 	}
 
 	public Pair<String, String> selectServer() {
-
+	
+		if(availableServers.size() == 0)
+			return null;
+		
 		Pair<String, String> server = availableServers.get(0);
 
 		availableServers.remove(0);

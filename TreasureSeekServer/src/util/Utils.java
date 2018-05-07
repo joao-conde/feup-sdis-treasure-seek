@@ -1,5 +1,7 @@
 package util;
 
+import java.util.Objects;
+
 public class Utils {
 
 	public static class Pair<K,V> {
@@ -11,6 +13,21 @@ public class Utils {
 			this.key = key;
 			this.value = value;
 		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(this.key, this.value);
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			@SuppressWarnings("unchecked")
+			Pair<K,V> pair2 = (Pair<K,V>) obj;
+			
+			return this.key.equals(pair2.key) && this.value.equals(pair2.value);
+		}
+		
+		
 		
 	}
 	
