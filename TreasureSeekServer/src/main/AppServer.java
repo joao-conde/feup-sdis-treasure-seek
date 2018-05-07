@@ -30,9 +30,12 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import communications.Message;
+import communications.ReplyMessage;
+import communications.ReplyMessage.ReplyMessageStatus;
 import controller.UserController;
 import util.ParseMessageException;
 import util.Utils;
+
 
 public class AppServer{
 
@@ -81,8 +84,9 @@ public class AppServer{
     		this.serverClientPort = serverClientPort;
     	
     		try {
+    			this.dbOperations = getDBOperations();
 			announceToLB(loadBalancerHost);
-			this.dbOperations = getDBOperations();    	
+			    	
 //    		this.userController = new UserController(dbOperations);
 //			receiveCalls();
 		
@@ -175,7 +179,7 @@ public class AppServer{
 		public void run() {
 			
 			try {
-				//				PrintWriter pw = new PrintWriter(this.socket.getOutputStream());
+				PrintWriter pw = new PrintWriter(this.socket.getOutputStream(), true);
 				BufferedReader br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
 				Scanner scanner = new Scanner(br);
 				
@@ -185,27 +189,45 @@ public class AppServer{
 					System.out.println(messageString);
 					
 					Message messageReceived = Message.parseMessage(messageString);
+					String reply = this.handleMessage(messageReceived);
 					
-					userController.loginUser(messageReceived.getBody().getString("token"));
+					pw.println(reply);
 					
-				
 					System.out.println(messageReceived);
 					
 				}
 				
 			
 				scanner.close();
-				
-				return;
-				
-				
+				pw.close();
+								
 			} catch (IOException | ParseMessageException | JSONException e) {
 				e.printStackTrace();
 				System.out.println(e.getMessage());
 			}
 			
+		}
+		
+		private String handleMessage(Message receivedMessage) throws JSONException {
+			
+			switch (receivedMessage.getHeader().getMessageType()) {
+				
+				case LOGIN:
+					
+					if(userController.loginUser(receivedMessage.getBody().getString("token")))
+						return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK);
+					
+					return ReplyMessage.buildResponseMessage(ReplyMessageStatus.UNAUTHORIZED);
+					
+						
+				default:
+					return ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
+			}
+			
 			
 		}
+		
+		
     	
     }
     
@@ -216,7 +238,7 @@ public class AppServer{
     		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
     		
     		socket = (SSLSocket)factory.createSocket(InetAddress.getByName(loadBalancerHost), 7000);
-			socket.setEnabledProtocols(ENC_PROTOCOLS);
+		socket.setEnabledProtocols(ENC_PROTOCOLS);
     		socket.setEnabledCipherSuites(socket.getSupportedCipherSuites());
 
     		PrintWriter pw = new PrintWriter(socket.getOutputStream());

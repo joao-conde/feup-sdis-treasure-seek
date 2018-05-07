@@ -1,5 +1,10 @@
 package sdis.controller;
 
+import android.app.Activity;
+import android.app.Application;
+import android.content.Context;
+import android.content.SharedPreferences;
+
 import com.facebook.AccessToken;
 
 import org.json.JSONException;
@@ -9,13 +14,16 @@ import sdis.communications.ClientMessage;
 import sdis.model.GlobalModel;
 import sdis.model.Model;
 import sdis.model.User;
+import sdis.treasureseek.R;
 import sdis.util.ParseMessageException;
 
 public class UserController {
 
     private User userModel = GlobalModel.getInstance().getUserModel();
+    private SharedPreferences preferences;
 
     private static UserController instance;
+
 
     public static UserController getInstance() {
 
@@ -35,15 +43,14 @@ public class UserController {
 
         String message  = null;
 
-
-        try {
-            message =  ClientMessage.buildRequestMessage(ClientMessage.MessageType.LOGIN.description, Model.ModelType.USER.getResourceName() ,json);
-        } catch (JSONException | ParseMessageException e) {
-            e.printStackTrace();
-        }
+        message =  ClientMessage.buildRequestMessage(ClientMessage.MessageType.LOGIN, Model.ModelType.USER.getResourceName() ,json);
 
         return message;
     }
 
+    public String buildLogoutMessage(AccessToken token) {
+
+        return "";
+    }
 
 }

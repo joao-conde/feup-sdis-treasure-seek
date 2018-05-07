@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.TextView;
 
 import com.facebook.AccessToken;
@@ -15,13 +16,19 @@ import com.facebook.FacebookException;
 import com.facebook.Profile;
 
 import com.facebook.ProfileTracker;
+import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 
+import org.json.JSONException;
+
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.InetAddress;
+import java.net.Socket;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -36,27 +43,29 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.Scanner;
 
+import sdis.communications.ClientMessage;
+import sdis.communications.ServerMessage;
 import sdis.controller.UserController;
-import sdis.model.User;
+import sdis.util.ParseMessageException;
 
 public class MainActivity extends AppCompatActivity {
 
     public static String[] ENC_PROTOCOLS = new String[] {"TLSv1.2"};
     public static int SERVER_PORT = 2000;
+    public static int LOAD_BALANCER_PORT = 6789;
 
     CallbackManager facebookCallbackManager = CallbackManager.Factory.create();
     LoginButton loginButton;
     TextView usernameTextView;
     AccessToken facebookAccessToken;
     ProfileListener profileListener;
-
     SSLContext sslContext;
 
     SharedPreferences preferences;
 
-
-    User loggedUser;
+    UserController userController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         preferences = getSharedPreferences(getString(R.string.treasureSeekPreferences), Context.MODE_PRIVATE);
+        userController = UserController.getInstance();
 
         System.setProperty("java.net.preferIPv4Stack" , "true");
         setContentView(R.layout.activity_main);
@@ -81,6 +91,8 @@ public class MainActivity extends AppCompatActivity {
 
         this.facebookAccessToken = AccessToken.getCurrentAccessToken();
 
+        /*
+
         if(facebookAccessToken != null) {
 
             if(Profile.getCurrentProfile() != null) {
@@ -94,6 +106,10 @@ public class MainActivity extends AppCompatActivity {
             this.usernameTextView.setText(R.string.default_username);
 
         }
+
+        */
+
+        new RequestServer().execute();
 
         
     }
@@ -164,33 +180,80 @@ public class MainActivity extends AppCompatActivity {
 
             try  {
 
-
                 SSLSocketFactory factory = sslContext.getSocketFactory();
                 //SSLSocket socket = (SSLSocket) factory.createSocket(InetAddress.getByName("10.0.2.2"),SERVER_PORT);
 
-
                 SSLSocket socket = (SSLSocket) factory.createSocket(InetAddress.getByName("172.30.13.189"),SERVER_PORT);
-
 
                 socket.setEnabledProtocols(ENC_PROTOCOLS);
                 socket.setEnabledCipherSuites(socket.getSupportedCipherSuites());
 
+                PrintWriter pw = new PrintWriter(socket.getOutputStream(),true);
+                Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream())));
 
-                PrintWriter pw = new PrintWriter(socket.getOutputStream());
                 pw.println(UserController.getInstance().buildLoginMessage(tokens[0]));
                 pw.close();
 
-                saveSession();
+                ServerMessage reply = ServerMessage.parseServerMessage(scanner.nextLine());
 
+                if(reply.getStatus() == ServerMessage.ReplyMessageStatus.OK)
+                    saveSession();
+                else
+                    LoginManager.getInstance().logOut();
 
             }
 
             catch (IOException e) {
                 System.out.println(e.getLocalizedMessage());
+            } catch (ParseMessageException e) {
+                System.out.println(e.getLocalizedMessage());
+            } catch (JSONException e) {
+                System.out.println(e.getLocalizedMessage());
             }
 
 
             return null;
+        }
+    }
+
+
+    class RequestServer extends  AsyncTask<Void,Void,Void> {
+
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+
+
+            try {
+
+                Socket socket = new Socket("172.30.0.88", LOAD_BALANCER_PORT);
+
+                PrintWriter pw = new PrintWriter(socket.getOutputStream(), true);
+                Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream())));
+
+                pw.println(ClientMessage.buildRequestMessage(ClientMessage.MessageType.RETRIEVE_HOST));
+
+                try {
+                    ServerMessage sm = ServerMessage.parseServerMessage(scanner.nextLine());
+
+                    System.out.println(sm);
+                    Log.d("Reply",sm.toString());
+
+
+
+                } catch (ParseMessageException e) {
+                    e.printStackTrace();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return null;
+
         }
     }
 
@@ -270,7 +333,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private void deleteSession() {
+    public void deleteSession() {
 
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean(getString(R.string.isLogged), false);
@@ -278,7 +341,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void saveSession() {
+    public void saveSession() {
 
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean(getString(R.string.isLogged), true);
@@ -286,13 +349,12 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private boolean getSession() {
-
-        SharedPreferences preferences =  getSharedPreferences(getString(R.string.treasureSeekPreferences), Context.MODE_PRIVATE);
+    public boolean getSession() {
 
         return preferences.getBoolean(getString(R.string.isLogged), false);
 
     }
+
 
 
 }

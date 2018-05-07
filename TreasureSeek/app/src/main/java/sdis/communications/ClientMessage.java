@@ -21,9 +21,10 @@ public class ClientMessage {
         DELETE("DELETE"),
         RETRIEVE("RETRIEVE"),
         LOGIN("LOGIN"),
-        LOGOUT("LOGOUT");
+        LOGOUT("LOGOUT"),
+        RETRIEVE_HOST("RETRIEVE_HOST");
 
-        static final ArrayList<String> types = new ArrayList<String>(Arrays.asList("CREATE","UPDATE","DELETE","RETRIEVE","LOGIN","LOGOUT","RETRIEVE_HOST","NEW_SERVER"));
+        static final ArrayList<String> types = new ArrayList<String>(Arrays.asList("CREATE","UPDATE","DELETE","RETRIEVE","LOGIN","LOGOUT","RETRIEVE_HOST","NEW_SERVER", "RETRIEVE_HOST"));
 
         public String description;
 
@@ -47,6 +48,8 @@ public class ClientMessage {
                     return MessageType.LOGIN;
                 case 5:
                     return MessageType.LOGOUT;
+                case 6:
+                    return MessageType.RETRIEVE_HOST;
                 default:
                     throw new ParseMessageException("Invalid Protocol Action");
 
@@ -56,16 +59,20 @@ public class ClientMessage {
 
     }
 
+    public static String buildRequestMessage(MessageType type) {
+        return type.description;
+    }
 
-    public static String buildRequestMessage(String type, String resourcePath, JSONObject jsonBody) throws JSONException, ParseMessageException {
 
-        return MessageType.type(type).description + " " + resourcePath + " " + jsonBody.toString();
+    public static String buildRequestMessage(MessageType type, String resourcePath, JSONObject jsonBody)  {
+
+        return type.description + " " + resourcePath + " " + jsonBody.toString();
 
     }
 
-    public static String buildRequestMessage(String type, JSONObject jsonBody) throws JSONException, ParseMessageException {
+    public static String buildRequestMessage(MessageType type, JSONObject jsonBody) {
 
-        return MessageType.type(type).description + " " + jsonBody.toString();
+        return type.description + " " + jsonBody.toString();
 
     }
 
