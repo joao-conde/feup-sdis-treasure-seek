@@ -27,6 +27,7 @@ import javax.rmi.ssl.SslRMIClientSocketFactory;
 import javax.rmi.ssl.SslRMIServerSocketFactory;
 
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import communications.Message;
 import controller.UserController;
@@ -82,24 +83,26 @@ public class AppServer{
     		try {
 			announceToLB(loadBalancerHost);
 			this.dbOperations = getDBOperations();    	
-    			this.userController = new UserController(dbOperations);
+//    		this.userController = new UserController(dbOperations);
 //			receiveCalls();
 		
     		} catch (SSLHandshakeException e) {
     			
-    			System.out.println("App Server could not handshake with load balancer on host " + loadBalancerHost);
+    			System.out.println("App Server could not handshake with load balancer/Db Server on host " + loadBalancerHost);
 			
 		} catch(UnknownHostException e) {
 			
-			System.out.println("App Server could not connect to load balancer or db server");
+			System.out.println("App Server could not connect to load balancer or Db Server");
 			
 		}
     		
     		catch ( IOException e) {
 			
-    			System.out.println("App Server could not handshake with load balancer on host " + loadBalancerHost);
+    			System.out.println("App Server could not connect to Load Balancer or Db Server");
 		
-    		} catch (NotBoundException e) {
+    		} 
+    		
+    		catch (NotBoundException e) {
 			
     			System.out.println("App Server could not connect to remote rmi object" + loadBalancerHost);
 		
@@ -108,7 +111,8 @@ public class AppServer{
 		}
     		
     		
-    		
+    		  	
+    		this.userController = new UserController(dbOperations);
     		receiveCalls();
 		
     	
@@ -219,8 +223,16 @@ public class AppServer{
     		
 //    	Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream())));
     		
+    		JSONObject body = new JSONObject();
+    		try {
+			body.put("host", InetAddress.getLocalHost().getHostAddress());
+			body.put("port", this.serverClientPort);
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+    		
     		        		
-    		pw.println(Message.MessageType.NEW_SERVER.description + " " + InetAddress.getLocalHost().getHostAddress() + ":" + this.serverClientPort);
+    		pw.println(Message.MessageType.NEW_SERVER.description + " " + body.toString());
 
     		pw.close();
     				

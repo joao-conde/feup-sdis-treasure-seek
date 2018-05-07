@@ -1,14 +1,11 @@
 package sdis.treasureseek;
 
+import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.Signature;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Base64;
-import android.util.Log;
 import android.widget.TextView;
 
 import com.facebook.AccessToken;
@@ -28,7 +25,6 @@ import java.net.InetAddress;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 import javax.net.ssl.SSLContext;
@@ -42,6 +38,7 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 
 import sdis.controller.UserController;
+import sdis.model.User;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -56,37 +53,17 @@ public class MainActivity extends AppCompatActivity {
 
     SSLContext sslContext;
 
-    private void getHashKey() {
+    SharedPreferences preferences;
 
-        try {
-            PackageInfo info = getPackageManager().getPackageInfo(
-                    "sdis.treasureseek",
-                    PackageManager.GET_SIGNATURES);
-            for (Signature signature : info.signatures) {
-                MessageDigest md = MessageDigest.getInstance("SHA");
-                md.update(signature.toByteArray());
-                Log.d("KeyHash:", Base64.encodeToString(md.digest(), Base64.DEFAULT));
-                System.out.println("Hash: " + Base64.encodeToString(md.digest(), Base64.DEFAULT));
 
-            }
-        } catch (PackageManager.NameNotFoundException e) {
-
-            System.out.println(e);
-
-        } catch (NoSuchAlgorithmException e) {
-
-            System.out.println(e);
-
-        }
-
-    }
+    User loggedUser;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
 
-        getHashKey();
+        preferences = getSharedPreferences(getString(R.string.treasureSeekPreferences), Context.MODE_PRIVATE);
 
         System.setProperty("java.net.preferIPv4Stack" , "true");
         setContentView(R.layout.activity_main);
@@ -155,14 +132,18 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
     private class ProfileListener extends ProfileTracker {
 
         @Override
         protected void onCurrentProfileChanged(Profile oldProfile, Profile currentProfile) {
 
-            if(currentProfile == null)
+            if(currentProfile == null) {
+
                 usernameTextView.setText(R.string.default_username);
+                deleteSession();
+
+            }
+
             else
                 usernameTextView.setText(currentProfile.getName());
         }
@@ -171,9 +152,18 @@ public class MainActivity extends AppCompatActivity {
     class LoginToTreasureSeek extends AsyncTask<AccessToken,Void,Void> {
 
         @Override
+        protected void onPreExecute() {
+
+            if(getSession())
+                this.cancel(true);
+
+        }
+
+        @Override
         protected Void doInBackground(AccessToken... tokens) {
 
             try  {
+
 
                 SSLSocketFactory factory = sslContext.getSocketFactory();
                 //SSLSocket socket = (SSLSocket) factory.createSocket(InetAddress.getByName("10.0.2.2"),SERVER_PORT);
@@ -189,6 +179,8 @@ public class MainActivity extends AppCompatActivity {
                 PrintWriter pw = new PrintWriter(socket.getOutputStream());
                 pw.println(UserController.getInstance().buildLoginMessage(tokens[0]));
                 pw.close();
+
+                saveSession();
 
 
             }
@@ -275,6 +267,31 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return keyStore;
+    }
+
+
+    private void deleteSession() {
+
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean(getString(R.string.isLogged), false);
+        editor.commit();
+
+    }
+
+    private void saveSession() {
+
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean(getString(R.string.isLogged), true);
+        editor.commit();
+
+    }
+
+    private boolean getSession() {
+
+        SharedPreferences preferences =  getSharedPreferences(getString(R.string.treasureSeekPreferences), Context.MODE_PRIVATE);
+
+        return preferences.getBoolean(getString(R.string.isLogged), false);
+
     }
 
 

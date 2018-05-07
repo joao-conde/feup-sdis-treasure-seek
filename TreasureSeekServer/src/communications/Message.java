@@ -73,7 +73,7 @@ public class Message {
 	public static class MessageHeader {
 		
 		private MessageType messageType;
-		private ArrayList<Pair<Model.ModelType,Integer>> resourcePath;
+		private ArrayList<Pair<Model.ModelType,Integer>> resourcePath = new ArrayList<>();
 		
 		private MessageHeader(MessageType messageType) {
 			this.messageType = messageType;
@@ -140,7 +140,10 @@ public class Message {
 		
 		res += "Message Body: \n"; 
 		
-		res += this.body.toString();
+		if(this.body == null)
+			res += "\tNo body";
+		else
+			res += "\t" + this.body.toString();
 		
 		return res;
 		
@@ -191,6 +194,15 @@ public class Message {
 			message = new Message(header);
 		}
 		
+		else if(messageType == MessageType.NEW_SERVER) {
+			
+			String bodyString = messageScanner.next();
+			JSONObject body = parseBody(bodyString);
+			message = new Message(header, body);
+			
+		}
+			
+		
 		else {
 			resourcePathString = messageScanner.next();
 			ArrayList<Pair<Model.ModelType,Integer>> pathToResource = parsePath(resourcePathString);
@@ -199,20 +211,9 @@ public class Message {
 			
 			if(messageType == MessageType.CREATE || messageType == MessageType.UPDATE || messageType == MessageType.LOGIN || messageType == MessageType.LOGOUT) {
 				
-				String jsonString = null;
+				String bodyString = messageScanner.next();
 				
-				try {
-					jsonString = messageScanner.nextLine();
-					
-				}
-				
-				catch(NoSuchElementException e) {
-					messageScanner.close();
-					throw new ParseMessageException("Missing message portions");
-				}
-				
-				
-				JSONObject body = new JSONObject(jsonString);
+				JSONObject body = parseBody(bodyString);
 				message = new Message(header, body);
 				
 				
@@ -224,6 +225,23 @@ public class Message {
 		messageScanner.close();
 		return message;
 		
+	}
+
+	private static JSONObject parseBody(String bodyString) throws ParseMessageException, JSONException {
+		String jsonString = null;
+		
+		try {
+			jsonString = bodyString;
+			
+		}
+		
+		catch(NoSuchElementException e) {
+			throw new ParseMessageException("Missing message portions");
+		}
+		
+		
+		JSONObject body = new JSONObject(jsonString);
+		return body;
 	}
 	
 	
