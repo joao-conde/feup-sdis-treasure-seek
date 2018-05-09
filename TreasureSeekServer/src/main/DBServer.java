@@ -1,5 +1,6 @@
 package main;
 
+import java.io.File;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.rmi.AlreadyBoundException;
@@ -15,6 +16,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.sql.Statement;
+import java.util.Scanner;
 
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import javax.rmi.ssl.SslRMIServerSocketFactory;
@@ -23,31 +26,34 @@ import model.Treasure;
 import model.User;
 import util.Utils;
 
+/**
+ * @author jotac
+ *
+ */
 public class DBServer extends UnicastRemoteObject implements DBOperations{
 
 	private static final long serialVersionUID = 1L;
 	public static String[] ENC_PROTOCOLS = new String[] {"TLSv1.2"};
 	public static String[] ENC_CYPHER_SUITES = new String[] {"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256"};
 	
+	private static final String DB_PATH = "../db/";
+	
     private static final int REGISTRY_PORT = 1099;
-    private static final String DBNAME = "treasureSeekDB.db";
-    private static final String DBURL = "jdbc:sqlite:../db/" + DBNAME;
-    
-    private Connection connection = DriverManager.getConnection(DBURL);
+    private static final String RMI_PREFIX = "db_";
 
+    private String DBNAME;
+    private String DBURL;
+    public int dbNo;
+    
+    private Registry registry;
+    private Connection connection;
+    
+   
     
     protected DBServer() throws Exception {
-    		super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
-    }
-    
-	public static void main(String[] args) throws Exception {
-		
-		Utils.setSecurityProperties();       
-		
-		Registry registry;
+		super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
 		
 		try{
-			
 			registry = LocateRegistry.createRegistry(REGISTRY_PORT,
 		            new SslRMIClientSocketFactory(),
 		            new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, true));
@@ -60,18 +66,16 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
             System.out.println("registry loaded.");
 		}
 		
-		DBServer dbServer = new DBServer();
-//		DBOperations dbOps = (DBOperations) UnicastRemoteObject.exportObject(dbServer, 0);
-
-		int dbNo = 1;
+		dbNo = 1;
 		while(true) {
 			try{
-				registry.bind("db_" + dbNo, dbServer); 
-	            System.out.println("obj bound: db_" + dbNo);
+
+				registry.bind(RMI_PREFIX + dbNo, this); 
+	            System.out.println("obj bound: " + RMI_PREFIX + dbNo);
 				break;
 			}
 			catch(AlreadyBoundException e) {
-	            System.out.println("obj already bound: db_" + dbNo);
+	            System.out.println("obj already bound: " + RMI_PREFIX + dbNo);
 				dbNo++;
 			}
 			catch(RemoteException e) {
@@ -80,7 +84,40 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 			}
 		}
 		
-		Runtime.getRuntime().addShutdownHook(new Thread(new DBServer.CloseDBServer(dbNo)));
+		
+		
+		DBNAME = "treasureSeekDB" + dbNo + ".db";
+		DBURL = "jdbc:sqlite:../db/" + DBNAME;
+		
+		boolean dbFileExists = new File(DB_PATH + DBNAME).exists();
+				
+		connection = DriverManager.getConnection(DBURL);
+
+		if(!dbFileExists) {		
+			String schema = "";
+			Scanner scanner = new Scanner(new File(DB_PATH + "seed.sql"));
+			
+			while(scanner.hasNextLine()) {
+				schema += scanner.nextLine();
+			}
+			
+			scanner.close();
+						
+			Statement st = connection.createStatement();
+			st.executeUpdate(schema);
+			st.close();
+			
+		}
+	
+    }
+    
+	public static void main(String[] args) throws Exception {
+		
+		Utils.setSecurityProperties();       
+		
+		DBServer dbServer = new DBServer();		
+	
+		Runtime.getRuntime().addShutdownHook(new Thread(new DBServer.CloseDBServer(dbServer.dbNo)));
 	}	
 	
 	static class CloseDBServer implements Runnable{
@@ -95,15 +132,16 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 				Registry registry = LocateRegistry.getRegistry(
 		                InetAddress.getLocalHost().getHostName(), REGISTRY_PORT,
 		                new SslRMIClientSocketFactory());
-				registry.unbind("db_" + dbNo);
+				registry.unbind(RMI_PREFIX + dbNo);
 			} catch (RemoteException | NotBoundException | UnknownHostException e) {
 				e.printStackTrace();
 			}
 		};
 	}
 	
+	
 	@Override
-	public User insertUser(long id, String email, String token, String name) {
+	public User insertUser(boolean appServerRequest, long id, String email, String token, String name) throws RemoteException {
     	
         try {
 
@@ -125,19 +163,32 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
     			user.setValue("token", token);
     			user.setValue("name", name);
     			user.setValue("admin", false);
+    			
+    			
+    		if(appServerRequest) {
+    	        String[] dbServers = registry.list();
+    	        
+    	        for(String db: dbServers) {
+    	        	if(db.equals(RMI_PREFIX + dbNo)) continue;
+    	        	
+    	        	((DBOperations) registry.lookup(db)).insertUser(false, id, email, token, name);
+    	        	
+    	        }
+    	        
+    	    }
             
             return user;
 
             
-        } catch (SQLException e) {
+        } catch (SQLException | NotBoundException e) {
             System.out.println(e.getMessage());
             return null;
-        } 
-
+        }
+        
     }
 
 	@Override
-	public User getUser(long id) throws RemoteException, SQLException {
+	public User getUser(boolean appServerRequest, long id) throws RemoteException, SQLException {
 		
 		PreparedStatement stmt = connection.prepareStatement(
 			"SELECT * from user WHERE id = ?"
@@ -162,7 +213,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 	}
 
 	@Override
-	public boolean updateUser(long id, String token) throws RemoteException, SQLException {
+	public boolean updateUser(boolean appServerRequest, long id, String token) throws RemoteException, SQLException {
 		
 		try {
 
@@ -175,11 +226,27 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
             stmt.setLong(2, id);
             stmt.executeUpdate();
             
-            System.out.println("User updated with success.");
+            
+            if(appServerRequest) {
+    	        String[] dbServers = registry.list();
+    	        
+    	        for(String db: dbServers) {
+    	        	if(db.equals(RMI_PREFIX + dbNo)) continue;
+    	        	
+    	        	((DBOperations) registry.lookup(db)).updateUser(false, id, token);
+        	        System.out.println("updateUser called for DB" + db);
+
+    	        	
+    	        }
+    	        
+    	    }
+            
+            
+            System.out.println("User updated with success on DB" + this.dbNo);
             return true;
 
             
-        } catch (SQLException e) {
+        } catch (SQLException | NotBoundException e) {
             System.out.println(e.getMessage());
             return false;
         } 
