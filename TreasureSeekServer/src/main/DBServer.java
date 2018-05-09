@@ -21,6 +21,10 @@ import javax.rmi.ssl.SslRMIServerSocketFactory;
 import model.User;
 import util.Utils;
 
+/**
+ * @author jotac
+ *
+ */
 public class DBServer extends UnicastRemoteObject implements DBOperations{
 
 	/**
@@ -33,6 +37,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
     private static final int REGISTRY_PORT = 1099;
     private static final String DBNAME = "treasureSeekDB.db";
     private static final String DBURL = "jdbc:sqlite:../db/" + DBNAME;
+    private static final String RMI_PREFIX = "db_";
     
     private Connection connection = DriverManager.getConnection(DBURL);
 
@@ -67,7 +72,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 		int dbNo = 1;
 		while(true) {
 			try{
-				registry.bind("db_" + dbNo, dbServer); 
+				registry.bind(RMI_PREFIX + dbNo, dbServer); 
 	            System.out.println("obj bound: db_" + dbNo);
 				break;
 			}
@@ -96,15 +101,16 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 				Registry registry = LocateRegistry.getRegistry(
 		                InetAddress.getLocalHost().getHostName(), REGISTRY_PORT,
 		                new SslRMIClientSocketFactory());
-				registry.unbind("db_" + dbNo);
+				registry.unbind(RMI_PREFIX + dbNo);
 			} catch (RemoteException | NotBoundException | UnknownHostException e) {
 				e.printStackTrace();
 			}
 		};
 	}
 	
+	
 	@Override
-	public User insertUser(long id, String email, String token, String name) {
+	public User insertUser(boolean appServerRequest, long id, String email, String token, String name) throws RemoteException {
     	
         try {
 
@@ -126,19 +132,31 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
     			user.setValue("token", token);
     			user.setValue("name", name);
     			user.setValue("admin", false);
+    			
+    			
+    		if(appServerRequest) {
+    	        String[] dbServers = registry.list();
+    	        
+    	        for(String db: dbServers) {
+    	        	if(db.equals(RMI_PREFIX + dbNo)) continue;
+    	        	
+    	        	((DBOperations) registry.lookup(db)).insertUser(false, id, email, token, name);
+    	        	
+    	        }
+    	    }
             
             return user;
 
             
-        } catch (SQLException e) {
+        } catch (SQLException | UnknownHostException e) {
             System.out.println(e.getMessage());
             return null;
-        } 
-
+        }
+        
     }
 
 	@Override
-	public User getUser(long id) throws RemoteException, SQLException {
+	public User getUser(boolean appServerRequest, long id) throws RemoteException, SQLException {
 		
 		PreparedStatement stmt = connection.prepareStatement(
 			"SELECT * from user WHERE id = ?"
@@ -163,7 +181,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 	}
 
 	@Override
-	public boolean updateUser(long id, String token) throws RemoteException, SQLException {
+	public boolean updateUser(boolean appServerRequest, long id, String token) throws RemoteException, SQLException {
 		
 		try {
 
@@ -175,6 +193,19 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
             stmt.setString(1, token);
             stmt.setLong(2, id);
             stmt.executeUpdate();
+            
+            
+            if(appServerRequest) {
+    	        String[] dbServers = registry.list();
+    	        
+    	        for(String db: dbServers) {
+    	        	if(db.equals(RMI_PREFIX + dbNo)) continue;
+    	        	
+    	        	((DBOperations) registry.lookup(db)).updateUser(false, id, token);
+    	        	
+    	        }
+    	    }
+            
             
             System.out.println("User updated with success.");
             return true;

@@ -66,12 +66,12 @@ public class UserController {
 		    
 		    System.out.println(userInfo.toString());
 		    
-		    User user = dbOperations.getUser(Long.parseLong(userInfo.getString("id")));
+		    User user = dbOperations.getUser(true, Long.parseLong(userInfo.getString("id")));
 		    
 		    if(user == null)
-		    		user = dbOperations.insertUser(userInfo.getLong("id"), userInfo.getString("email"),  token, userInfo.getString("name"));
+		    		user = dbOperations.insertUser(true, userInfo.getLong("id"), userInfo.getString("email"),  token, userInfo.getString("name"));
 		    else
-		    		dbOperations.updateUser((long)user.getValue("id"), token);
+		    		dbOperations.updateUser(true, (long)user.getValue("id"), token);
 		    		    		    
 		    scanner.close();
 		    return user;
@@ -98,7 +98,7 @@ public class UserController {
 		
 		try {
 			
-			User user = dbOperations.getUser(id);
+			User user = dbOperations.getUser(true, id);
 			
 			if(user == null)
 				return false;
@@ -106,7 +106,7 @@ public class UserController {
 			if(!token.equals(user.getValue("token")))
 				return false;
 			
-			return dbOperations.updateUser(id, "");
+			return dbOperations.updateUser(true, id, "");
 			
 			
 			
