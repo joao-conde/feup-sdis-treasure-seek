@@ -1,6 +1,7 @@
 package main;
 
 import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.io.BufferedReader;
@@ -12,6 +13,8 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
+
+import java.util.Enumeration;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -304,8 +307,8 @@ public class AppServer{
     		
     		JSONObject body = new JSONObject();
     		try {
-				body.put("host", InetAddress.getLocalHost().getHostAddress());
-				body.put("port", this.serverClientPort);
+				body.put("host", socket.getLocalAddress().getHostAddress());
+    			body.put("port", this.serverClientPort);
 			} catch (JSONException e) {
 				e.printStackTrace();
 			}

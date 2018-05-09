@@ -124,7 +124,6 @@ public class LoadBalancer {
 						message.getBody().get("port").toString());
 				
 				if(!availableServers.contains(serverID)) {
-					System.out.println("ADDING NEW SERVER");
 					availableServers.add(serverID);
 					reply = ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK);
 				}
