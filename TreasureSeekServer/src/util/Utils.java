@@ -46,38 +46,4 @@ public class Utils {
 
 	}
 
-	public static String getRealHost() throws SocketException {
-		Enumeration en = NetworkInterface.getNetworkInterfaces();
-		while (en.hasMoreElements()) {
-			NetworkInterface ni = (NetworkInterface) en.nextElement();
-			Enumeration ee = ni.getInetAddresses();
-
-			while (ee.hasMoreElements()) {
-				InetAddress ia = (InetAddress) ee.nextElement();
-				String iaAddress = ia.getHostAddress();
-				if (validIP(iaAddress))
-					return iaAddress;
-			}
-		}
-
-		return "No valid IP address";
-	}
-
-	public static boolean validIP(String ip) {
-		if (ip == null || ip.isEmpty())
-			return false;
-		ip = ip.trim();
-		if ((ip.length() < 6) & (ip.length() > 15))
-			return false;
-
-		try {
-			Pattern pattern = Pattern.compile(
-					"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$");
-			Matcher matcher = pattern.matcher(ip);
-			return matcher.matches();
-		} catch (PatternSyntaxException ex) {
-			return false;
-		}
-	}
-
 }

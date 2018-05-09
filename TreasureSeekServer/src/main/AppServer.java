@@ -14,7 +14,6 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 
-import java.util.Enumeration;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -302,7 +301,7 @@ public class AppServer{
 				e.printStackTrace();
 			}
 	    		
-    		        		
+       		
     		pw.println(message.description + " " + body.toString());
     		
     		socket.setSoTimeout(TIME_OUT);

@@ -148,7 +148,6 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
     	        	
     	        }
     	        
-    	        System.out.println("insertUser called for other DB");
     	    }
             
             return user;
@@ -208,14 +207,15 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
     	        	if(db.equals(RMI_PREFIX + dbNo)) continue;
     	        	
     	        	((DBOperations) registry.lookup(db)).updateUser(false, id, token);
+        	        System.out.println("updateUser called for DB" + db);
+
     	        	
     	        }
     	        
-    	        System.out.println("updateUser called for other DB");
     	    }
             
             
-            System.out.println("User updated with success.");
+            System.out.println("User updated with success on DB" + this.dbNo);
             return true;
 
             
