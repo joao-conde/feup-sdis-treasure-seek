@@ -14,7 +14,7 @@ public class ClientMessage {
 
     public static final String RESOURCE_PATH_SEPARATOR = "/";
 
-    public static enum MessageType {
+    public enum MessageType {
 
         CREATE("CREATE"),
         UPDATE("UPDATE"),

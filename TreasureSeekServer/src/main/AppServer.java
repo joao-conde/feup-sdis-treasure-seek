@@ -1,18 +1,16 @@
 package main;
 
 import java.net.InetAddress;
-import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.sql.SQLException;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
@@ -23,9 +21,8 @@ import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
-import javax.rmi.ssl.SslRMIClientSocketFactory;
-import javax.rmi.ssl.SslRMIServerSocketFactory;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -33,6 +30,8 @@ import communications.Message;
 import communications.ReplyMessage;
 import communications.ReplyMessage.ReplyMessageStatus;
 import controller.UserController;
+import model.User;
+import util.DuplicatedAppServer;
 import util.ParseMessageException;
 import util.Utils;
 
@@ -43,14 +42,18 @@ public class AppServer{
 	public static String[] ENC_CYPHER_SUITES = new String[] {"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256"};
 		
     private static final int REGISTRY_PORT = 1099;
+    private static final int TIME_OUT = 2000;
 
-	private static String[] dbServerIPs;
+	//private static String[] dbServerIPs;
 	
 	private ExecutorService threadPool = Executors.newFixedThreadPool(20);
 	public int serverClientPort;
 	
 	private UserController userController;
 	private DBOperations dbOperations;
+	
+	private String dbServerHostAddres;
+	private String lbHostAddress;
 
   
     public static void main(String[] args) throws InterruptedException {
@@ -63,7 +66,7 @@ public class AppServer{
     }
     
     
-    private DBOperations getDBOperations() throws RemoteException, NotBoundException, SQLException, UnknownHostException {
+    private DBOperations getDBOperations() throws RemoteException, NotBoundException, UnknownHostException {
     	
     		Registry registry = LocateRegistry.getRegistry(
     				InetAddress.getLocalHost().getHostName(), REGISTRY_PORT,
@@ -82,40 +85,61 @@ public class AppServer{
 		//dbServerIPs = args;
 	
     		this.serverClientPort = serverClientPort;
+    		this.lbHostAddress = loadBalancerHost;
+    		
+    		try {
+			this.dbServerHostAddres = InetAddress.getLocalHost().getHostAddress();
+		} catch (UnknownHostException e1) {
+			System.out.println(e1.getLocalizedMessage());
+		}
+    		
     	
     		try {
     			this.dbOperations = getDBOperations();
-			announceToLB(loadBalancerHost);
-			    	
-//    		this.userController = new UserController(dbOperations);
-//			receiveCalls();
-		
-    		} catch (SSLHandshakeException e) {
-    			
-    			System.out.println("App Server could not handshake with load balancer/Db Server on host " + loadBalancerHost);
+					
+    		}  catch(UnknownHostException e) {
 			
-		} catch(UnknownHostException e) {
-			
-			System.out.println("App Server could not connect to load balancer or Db Server");
+			System.out.println("App Server could not connect to DB Server on host " + dbServerHostAddres + ":" + REGISTRY_PORT);
+			System.exit(1);
 			
 		}
     		
     		catch ( IOException e) {
 			
-    			System.out.println("App Server could not connect to Load Balancer or Db Server");
-		
+    			System.out.println("App Server could not connect to DB Server on host " + dbServerHostAddres + ":" + REGISTRY_PORT);
+    			System.exit(1);
     		} 
     		
     		catch (NotBoundException e) {
 			
-    			System.out.println("App Server could not connect to remote rmi object" + loadBalancerHost);
-		
-    		} catch (SQLException e) {
-			System.out.println(e.getLocalizedMessage());
+    			System.out.println("App Server could not connect to remote rmi object");
+    			System.exit(1);
+    		} 
+    		
+    		
+    		try {
+			announceToLB(loadBalancerHost);
+		} catch (SSLHandshakeException e) {
+			System.out.println("App Server could not perform SSL handshake with Load Balancer on host " + lbHostAddress + ":" + LoadBalancer.SERVER_PORT);
+			System.exit(1);
+		} catch (UnknownHostException e) {
+			System.out.println("App Server could not connect to Load Balancer on host " + lbHostAddress + ":" + LoadBalancer.SERVER_PORT);
+			System.exit(1);
+		} catch (IOException e) {
+			System.out.println("App Server could not connect to Load Balancer on host " + lbHostAddress + ":" + LoadBalancer.SERVER_PORT);
+			System.exit(1);
+		} catch (ParseMessageException e) {
+			System.out.println("App Server could not connect to Load Balancer on host " + lbHostAddress + ":" + LoadBalancer.SERVER_PORT);
+			System.exit(1);
+		} catch (DuplicatedAppServer e) {
+			System.out.println("App Server could not connect to Load Balancer on host " + lbHostAddress + ":" + LoadBalancer.SERVER_PORT);
+			System.exit(1);
+		} catch (JSONException e) {
+			System.out.println("App Server could not connect to Load Balancer on host " + lbHostAddress + ":" + LoadBalancer.SERVER_PORT);
+			System.exit(1);
 		}
     		
-    		
-    		  	
+    		 	
     		this.userController = new UserController(dbOperations);
     		receiveCalls();
 		
@@ -186,8 +210,7 @@ public class AppServer{
 				if(scanner.hasNextLine()) {
 					
 					String messageString = scanner.nextLine();
-					System.out.println(messageString);
-					
+										
 					Message messageReceived = Message.parseMessage(messageString);
 					String reply = this.handleMessage(messageReceived);
 					
@@ -214,10 +237,42 @@ public class AppServer{
 				
 				case LOGIN:
 					
-					if(userController.loginUser(receivedMessage.getBody().getString("token")))
-						return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK);
+					User user = userController.loginUser(receivedMessage.getBody().getString("token"));
+					
+					if(user != null) {
+						
+						JSONArray body = new JSONArray();
+						JSONObject userJson = user.toJSON();
+						body.put(userJson);
+						
+						System.out.println("User " + (String) user.getValue("name")  + " logged in");
+						
+						return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK, body);
+					}
+						
 					
 					return ReplyMessage.buildResponseMessage(ReplyMessageStatus.UNAUTHORIZED);
+					
+				case LOGOUT:
+					
+					boolean result = userController.logoutUser(receivedMessage.getBody().getLong("id"), receivedMessage.getBody().getString("token"));
+					
+					if(result) {
+						
+						String name = "";
+						
+						if(receivedMessage.getBody().has("name"))
+							name = receivedMessage.getBody().getString("name");
+						
+						System.out.println("User " + name + " logged out");
+						return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK);
+						
+						
+					}
+						
+					
+					return ReplyMessage.buildResponseMessage(ReplyMessageStatus.UNAUTHORIZED);
+					
 					
 						
 				default:
@@ -232,7 +287,7 @@ public class AppServer{
     }
     
     
-    public void announceToLB(String loadBalancerHost) throws UnknownHostException, IOException, SSLHandshakeException, InterruptedException {
+    public void announceToLB(String loadBalancerHost) throws UnknownHostException, IOException, SSLHandshakeException, InterruptedException, SocketTimeoutException, ParseMessageException, JSONException, DuplicatedAppServer {
     	
     		SSLSocket socket = null;
     		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
@@ -242,8 +297,7 @@ public class AppServer{
 		socket.setEnabledProtocols(ENC_PROTOCOLS);
     		socket.setEnabledCipherSuites(socket.getSupportedCipherSuites());
 
-    		PrintWriter pw = new PrintWriter(socket.getOutputStream());
-    		
+    		PrintWriter pw = new PrintWriter(socket.getOutputStream(), true);
     		Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream())));
     		
     		JSONObject body = new JSONObject();
@@ -256,12 +310,21 @@ public class AppServer{
     		
     		        		
     		pw.println(Message.MessageType.NEW_SERVER.description + " " + body.toString());
-    		pw.flush();
+    		
+    		socket.setSoTimeout(TIME_OUT);
+    		
+    		ReplyMessageStatus reply = null;
     		
     		if(scanner.hasNextLine()){
-    		    System.out.println(scanner.nextLine());
+    		    reply = ReplyMessage.parseResponse(scanner.nextLine());
     		}
-    		//System.out.println(scanner.nextLine());
+    		
+    		if(reply != ReplyMessageStatus.OK) {
+    			scanner.close();
+    			throw new DuplicatedAppServer();
+    		}
+    			
+
     		scanner.close();
     		pw.close();
     				

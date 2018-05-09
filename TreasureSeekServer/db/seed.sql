@@ -9,6 +9,7 @@ CREATE TABLE user (
     id INTEGER PRIMARY KEY,    
     email TEXT NOT NULL UNIQUE,
     token TEXT NOT NULL,
+    name TEXT NOT NULL,
     admin INTEGER CHECK (admin == 0 || admin == 1) DEFAULT 0
 );
 

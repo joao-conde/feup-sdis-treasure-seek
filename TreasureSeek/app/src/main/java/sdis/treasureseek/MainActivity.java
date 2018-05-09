@@ -1,117 +1,86 @@
 package sdis.treasureseek;
 
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
+import android.util.Pair;
+import android.view.KeyEvent;
+import android.view.View;
+import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.facebook.AccessToken;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
-import com.facebook.Profile;
 
-import com.facebook.ProfileTracker;
 import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
-import com.facebook.login.widget.LoginButton;
 
 import org.json.JSONException;
+import org.json.JSONObject;
+import org.w3c.dom.Text;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.security.KeyManagementException;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManagerFactory;
+import java.util.Arrays;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import java.security.cert.Certificate;
-import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
-import java.util.Scanner;
-
-import sdis.communications.ClientMessage;
 import sdis.communications.ServerMessage;
-import sdis.controller.UserController;
+import sdis.controller.Controller;
+import sdis.util.NoAvailableServer;
 import sdis.util.ParseMessageException;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static String[] ENC_PROTOCOLS = new String[] {"TLSv1.2"};
-    public static int SERVER_PORT = 2000;
-    public static int LOAD_BALANCER_PORT = 6789;
-
     CallbackManager facebookCallbackManager = CallbackManager.Factory.create();
-    LoginButton loginButton;
+
+    Button loginButton;
     TextView usernameTextView;
+    ProgressBar progressBar;
+    TextView ipTextView;
+
+    LoginManager fbLoginManager;
     AccessToken facebookAccessToken;
-    ProfileListener profileListener;
-    SSLContext sslContext;
 
-    SharedPreferences preferences;
+    Controller controller;
 
-    UserController userController;
+    String appServerAddress;
+    int appServerPort;
+
+    private static final Pattern ipPattern = Pattern.compile("^([0-9]{1,3}\\.){3}[0-9]{1,3}$");;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
-
-        preferences = getSharedPreferences(getString(R.string.treasureSeekPreferences), Context.MODE_PRIVATE);
-        userController = UserController.getInstance();
-
-        System.setProperty("java.net.preferIPv4Stack" , "true");
         setContentView(R.layout.activity_main);
 
+        controller = new Controller(getApplicationContext());
 
-        this.sslContext = this.createSSLContextWithCustomCertificate();
-
+        fbLoginManager = LoginManager.getInstance();
+        fbLoginManager.registerCallback(facebookCallbackManager, new TreasureSeekFacebookCallback());
 
         loginButton = findViewById(R.id.login_button);
-        loginButton.setReadPermissions(this.getResources().getStringArray(R.array.facebook_permissions));
-        loginButton.registerCallback(facebookCallbackManager, new TreasureSeekFacebookCallback());
+        loginButton.setOnClickListener(new LoginListener());
+
+        progressBar = findViewById(R.id.loginProgressBar);
+        progressBar.setVisibility(View.GONE);
 
         usernameTextView = this.findViewById(R.id.user_name);
-        profileListener = new ProfileListener();
+
+        ipTextView = findViewById(R.id.textIp);
+        ipTextView.setOnKeyListener(new IpTextViewListener());
 
         this.facebookAccessToken = AccessToken.getCurrentAccessToken();
 
-        /*
 
-        if(facebookAccessToken != null) {
+        toggleButtons();
 
-            if(Profile.getCurrentProfile() != null) {
-                usernameTextView.setText(Profile.getCurrentProfile().getName());
-                new LoginToTreasureSeek().execute(facebookAccessToken);
-            }
-        }
-
-        else {
-
-            this.usernameTextView.setText(R.string.default_username);
-
-        }
-
-        */
-
-        new RequestServer().execute();
-
-        
     }
 
     @Override
@@ -120,15 +89,134 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
     }
 
+    private void toggleButtons() {
+
+
+        if(controller.isLogged()) {
+
+            loginButton.setText(getString(R.string.logout));
+            usernameTextView.setText((String) controller.getLoggedUser().getValue("name"));
+        }
+        else {
+
+            loginButton.setText(getString(R.string.login));
+            loginButton.setEnabled(checkIpAddress(ipTextView.getText()));
+            usernameTextView.setText(getString(R.string.default_username));
+
+
+        }
+
+    }
+
+    private class LoginToTreasureSeek extends AsyncTask<Void,Void,ServerMessage> {
+
+
+        @Override
+        protected ServerMessage doInBackground(Void... voids) {
+
+            ServerMessage reply = null;
+
+            try  {
+                reply = controller.loginToTreasureSeek(appServerAddress, appServerPort);
+            }
+
+            catch (IOException | ParseMessageException | JSONException e) {
+                System.out.println(e.getLocalizedMessage());
+            }
+
+            return reply;
+        }
+
+        @Override
+        protected void onPostExecute(ServerMessage reply) {
+
+            progressBar.setVisibility(View.GONE);
+
+            if(reply != null && reply.getStatus() == ServerMessage.ReplyMessageStatus.OK) {
+
+                try {
+                    JSONObject user = (JSONObject) reply.getBody().get(0);
+                    controller.saveSession(user);
+
+
+                } catch (JSONException e) {
+                    showConnectionError();
+                    return;
+                }
+
+
+            }
+
+            else {
+                showConnectionError();
+                fbLoginManager.logOut();
+            }
+
+
+            toggleButtons();
+
+        }
+    }
+
+    private class LogoutFromTreasureSeekTask extends AsyncTask<Void,Void,ServerMessage> {
+
+
+        @Override
+        protected ServerMessage doInBackground(Void... voids) {
+
+            ServerMessage reply = null;
+
+            try  {
+                reply = controller.logoutFromTreasureSeek(appServerAddress, appServerPort);
+            }
+
+            catch (IOException | ParseMessageException | JSONException e) {
+                System.out.println(e.getLocalizedMessage());
+            }
+
+            return reply;
+        }
+
+        @Override
+        protected void onPostExecute(ServerMessage reply) {
+
+            progressBar.setVisibility(View.GONE);
+
+            if(reply != null && reply.getStatus() == ServerMessage.ReplyMessageStatus.OK) {
+                controller.deleteSession();
+                fbLoginManager.logOut();
+            }
+
+
+            else
+                showConnectionError();
+
+
+            toggleButtons();
+
+        }
+
+    }
+
+    private class LoginListener implements View.OnClickListener {
+
+
+        @Override
+        public void onClick(View v) {
+
+            new RequestAvailableServerTask().execute();
+
+        }
+    }
+
     private class TreasureSeekFacebookCallback implements  FacebookCallback<LoginResult> {
 
 
         @Override
         public void onSuccess(LoginResult loginResult) {
 
-            System.out.println(loginResult);
             facebookAccessToken = loginResult.getAccessToken();
-            new LoginToTreasureSeek().execute(facebookAccessToken);
+            new LoginToTreasureSeek().execute();
 
         }
 
@@ -148,213 +236,71 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private class ProfileListener extends ProfileTracker {
-
-        @Override
-        protected void onCurrentProfileChanged(Profile oldProfile, Profile currentProfile) {
-
-            if(currentProfile == null) {
-
-                usernameTextView.setText(R.string.default_username);
-                deleteSession();
-
-            }
-
-            else
-                usernameTextView.setText(currentProfile.getName());
-        }
-    }
-
-    class LoginToTreasureSeek extends AsyncTask<AccessToken,Void,Void> {
+    private class RequestAvailableServerTask extends AsyncTask<Void,Void,Pair<String,Integer>> {
 
         @Override
         protected void onPreExecute() {
-
-            if(getSession())
-                this.cancel(true);
-
+            progressBar.setVisibility(View.VISIBLE);
         }
 
         @Override
-        protected Void doInBackground(AccessToken... tokens) {
+        protected Pair<String, Integer> doInBackground(Void... voids) {
 
-            try  {
-
-                SSLSocketFactory factory = sslContext.getSocketFactory();
-                //SSLSocket socket = (SSLSocket) factory.createSocket(InetAddress.getByName("10.0.2.2"),SERVER_PORT);
-
-                SSLSocket socket = (SSLSocket) factory.createSocket(InetAddress.getByName("172.30.13.189"),SERVER_PORT);
-
-                socket.setEnabledProtocols(ENC_PROTOCOLS);
-                socket.setEnabledCipherSuites(socket.getSupportedCipherSuites());
-
-                PrintWriter pw = new PrintWriter(socket.getOutputStream(),true);
-                Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream())));
-
-                pw.println(UserController.getInstance().buildLoginMessage(tokens[0]));
-                pw.close();
-
-                ServerMessage reply = ServerMessage.parseServerMessage(scanner.nextLine());
-
-                if(reply.getStatus() == ServerMessage.ReplyMessageStatus.OK)
-                    saveSession();
-                else
-                    LoginManager.getInstance().logOut();
-
-            }
-
-            catch (IOException e) {
-                System.out.println(e.getLocalizedMessage());
-            } catch (ParseMessageException e) {
-                System.out.println(e.getLocalizedMessage());
-            } catch (JSONException e) {
-                System.out.println(e.getLocalizedMessage());
-            }
-
-
-            return null;
-        }
-    }
-
-
-    class RequestServer extends  AsyncTask<Void,Void,Void> {
-
-
-        @Override
-        protected Void doInBackground(Void... voids) {
-
+            Pair<String,Integer> server = null;
 
             try {
-
-                Socket socket = new Socket("172.30.0.88", LOAD_BALANCER_PORT);
-
-                PrintWriter pw = new PrintWriter(socket.getOutputStream(), true);
-                Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream())));
-
-                pw.println(ClientMessage.buildRequestMessage(ClientMessage.MessageType.RETRIEVE_HOST));
-
-                try {
-                    ServerMessage sm = ServerMessage.parseServerMessage(scanner.nextLine());
-
-                    System.out.println(sm);
-                    Log.d("Reply",sm.toString());
+                server = controller.getAvailableServer(String.valueOf(ipTextView.getText()));
 
 
-
-                } catch (ParseMessageException e) {
-                    e.printStackTrace();
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-
-
-            } catch (IOException e) {
+            } catch (IOException | JSONException | ParseMessageException | NoAvailableServer e) {
                 e.printStackTrace();
             }
 
-            return null;
+            return server;
+
+        }
+
+        @Override
+        protected void onPostExecute(Pair<String, Integer> server) {
+
+            if(server == null) {
+                showConnectionError();
+                progressBar.setVisibility(View.GONE);
+                return;
+
+            }
+
+            appServerAddress = server.first;
+            appServerPort = server.second;
+
+            if(!controller.isLogged())
+                fbLoginManager.logInWithReadPermissions(MainActivity.this, Arrays.asList(getResources().getStringArray(R.array.facebook_permissions)));
+            else
+                new LogoutFromTreasureSeekTask().execute();
 
         }
     }
 
-    private SSLContext createSSLContextWithCustomCertificate() {
+    private  void showConnectionError() {
+        Toast.makeText(getApplicationContext(), R.string.connectionError, Toast.LENGTH_LONG).show();
+    }
 
-        Certificate ca = this.getCertificateFromFile();
-        KeyStore keyStore = this.createKeyStoreWithCA(ca);
+    private boolean checkIpAddress(CharSequence text) {
 
-        // Create a TrustManager that trusts the CAs in our KeyStore
-        // Create an SSLContext that uses our TrustManager
-        String tmfAlgorithm = TrustManagerFactory.getDefaultAlgorithm();
-        TrustManagerFactory tmf = null;
+        Matcher matcher = ipPattern.matcher(text);
+        return matcher.matches();
 
-        SSLContext context = null;
+    }
 
-        try {
-            tmf = TrustManagerFactory.getInstance(tmfAlgorithm);
-            tmf.init(keyStore);
-            context = SSLContext.getInstance(ENC_PROTOCOLS[0]);
-            context.init(null, tmf.getTrustManagers(), null);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (KeyStoreException e) {
-            e.printStackTrace();
-        } catch (KeyManagementException e) {
-            e.printStackTrace();
+    private class IpTextViewListener implements TextView.OnKeyListener {
+
+
+
+        @Override
+        public boolean onKey(View v, int keyCode, KeyEvent event) {
+            loginButton.setEnabled(checkIpAddress(((TextView)v).getText()));
+            return false;
         }
-
-        return context;
-
     }
-
-    private Certificate getCertificateFromFile() {
-
-        Certificate ca = null;
-
-        try {
-
-            CertificateFactory cf = CertificateFactory.getInstance("X.509");
-            InputStream caInput = getResources().openRawResource(getResources().getIdentifier("treasureseek", "raw", getPackageName()));
-            ca = cf.generateCertificate(caInput);
-            System.out.println("ca=" + ((X509Certificate) ca).getSubjectDN());
-            caInput.close();
-        }
-
-
-        catch (CertificateException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return ca;
-
-    }
-
-    private KeyStore createKeyStoreWithCA(Certificate ca) {
-
-        String keyStoreType = KeyStore.getDefaultType();
-        KeyStore keyStore = null;
-
-        try {
-            keyStore = KeyStore.getInstance(keyStoreType);
-            keyStore.load(null, null);
-            keyStore.setCertificateEntry("ca", ca);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (CertificateException e) {
-            e.printStackTrace();
-        } catch (KeyStoreException e) {
-            e.printStackTrace();
-        }
-
-        return keyStore;
-    }
-
-
-    public void deleteSession() {
-
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putBoolean(getString(R.string.isLogged), false);
-        editor.commit();
-
-    }
-
-    public void saveSession() {
-
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putBoolean(getString(R.string.isLogged), true);
-        editor.commit();
-
-    }
-
-    public boolean getSession() {
-
-        return preferences.getBoolean(getString(R.string.isLogged), false);
-
-    }
-
-
 
 }

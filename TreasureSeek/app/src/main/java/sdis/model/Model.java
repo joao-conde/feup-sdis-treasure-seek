@@ -49,9 +49,9 @@ public abstract class Model {
 
     }
 
-    private ModelType modelType;
-    private HashMap<String,Object> values;
-    private String[] fields;
+    protected ModelType modelType;
+    protected HashMap<String,Object> values = new HashMap<>();
+    protected String[] fields;
 
     public Model(ModelType modelType, String[] fields) {
         this.modelType = modelType;

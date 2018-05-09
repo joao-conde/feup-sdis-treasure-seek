@@ -104,36 +104,37 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 	}
 	
 	@Override
-	public boolean insertUser(long id, String email, String token) {
+	public User insertUser(long id, String email, String token, String name) {
     	
         try {
 
             PreparedStatement stmt = connection.prepareStatement(
-            	"INSERT INTO user (id, email, token) VALUES (?, ?, ?)"
+            	"INSERT INTO user (id, email, token, name) VALUES (?, ?, ?, ?)"
             );
 
             stmt.setLong(1, id);
             stmt.setString(2, email);
             stmt.setString(3, token);
+            stmt.setString(4, name);
             stmt.executeUpdate();
             
             System.out.println("User inserted with success.");
-            return true;
+            
+            User user = new User();
+    			user.setValue("id", id);
+    			user.setValue("email", email);
+    			user.setValue("token", token);
+    			user.setValue("name", name);
+    			user.setValue("admin", false);
+            
+            return user;
 
             
         } catch (SQLException e) {
             System.out.println(e.getMessage());
-            return false;
+            return null;
         } 
-//        finally {
-//            try {
-//                if (connection != null) {
-//                    connection.close();
-//                }
-//            } catch (SQLException ex) {
-//                System.out.println(ex.getMessage());
-//            }
-//        }
+
     }
 
 	@Override
@@ -153,15 +154,37 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 		user.setValue("id", result.getLong(1));
 		user.setValue("email", result.getString(2));
 		user.setValue("token", result.getString(3));
-		user.setValue("admin", result.getBoolean(4));
+		user.setValue("name", result.getString(4));
+		user.setValue("admin", result.getBoolean(5));
+		
 				
 		return user;
 		
 	}
 
 	@Override
-	public void updateUser(long id, String email, String token) throws RemoteException, SQLException {
-		// TODO Auto-generated method stub
+	public boolean updateUser(long id, String token) throws RemoteException, SQLException {
+		
+		try {
+
+            PreparedStatement stmt = connection.prepareStatement(
+            	"UPDATE user SET token = ? WHERE id = ?"
+            );
+
+            
+            stmt.setString(1, token);
+            stmt.setLong(2, id);
+            stmt.executeUpdate();
+            
+            System.out.println("User updated with success.");
+            return true;
+
+            
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+            return false;
+        } 
+		
 		
 	}
 

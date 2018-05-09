@@ -5,4 +5,12 @@
     <string name="default_username">No user logged!</string>
     <string name="treasureSeekPreferences">TreasureSeekPreferences</string>
     <string name="isLogged">LoggedIntoTreasureSeek</string>
+    <string name="facebookToken">FacebookToken</string>
+    <string name="nameOfUser">NameOfUser</string>
+    <string name="email">Email</string>
+    <string name="userId">Id</string>
+    <string name="isAdmin">IsAdmin</string>
+    <string name="connectionError">Oops, there was a problem connecting to Treasure Seek! Please try again later.</string>
+    <string name="login">Login with facebook</string>
+    <string name="logout">Logout</string>
 </resources>

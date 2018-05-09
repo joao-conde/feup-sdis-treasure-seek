@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.rmi.RemoteException;
+import java.sql.SQLException;
 import java.util.Scanner;
 
 import org.json.JSONObject;
@@ -26,9 +28,8 @@ public class UserController {
 
 
 
-	public boolean loginUser(String token) {
+	public User loginUser(String token) {
 		
-		boolean result = false;
 		HttpURLConnection  facebookConneciton = null;
 		String urlString = FACEBOOK_API_ADDRES + "me?fields=name,email&access_token=" + token; 
 		
@@ -38,14 +39,11 @@ public class UserController {
 		    facebookConneciton = (HttpURLConnection) url.openConnection();
 		    facebookConneciton.setRequestMethod("GET");
  
-//		    facebookConneciton.setUseCaches(false);
-//		    facebookConneciton.setDoOutput(true);
-
 
 		    //Get Response  
 		    InputStream is = facebookConneciton.getInputStream();
 		    BufferedReader rd = new BufferedReader(new InputStreamReader(is));
-		    StringBuilder response = new StringBuilder(); // or StringBuffer if Java version 5+
+		    //StringBuilder response = new StringBuilder(); // or StringBuffer if Java version 5+
 		    
 		    Scanner scanner = new Scanner(rd);
 		    
@@ -54,14 +52,14 @@ public class UserController {
 
 		    rd.close();
 		    
-		    System.out.println(response);
+		    //System.out.println(response);
 		    
 		    JSONObject userInfo = new JSONObject(responseString);
 		    
 		    if(userInfo.has("error")) {
 		    		
 		    		scanner.close();
-		    		return false;
+		    		return null;
 		    		
 
 		    }
@@ -70,21 +68,13 @@ public class UserController {
 		    
 		    User user = dbOperations.getUser(Long.parseLong(userInfo.getString("id")));
 		    
-		    if(user != null) {
-		    	
-		    
-		    }
-		    
-		    else {
-		    	
-		    		dbOperations.insertUser(userInfo.getLong("id"), userInfo.getString("email"),  token);
-		    	
-		    }
-		    	
-		    	
-		    
+		    if(user == null)
+		    		user = dbOperations.insertUser(userInfo.getLong("id"), userInfo.getString("email"),  token, userInfo.getString("name"));
+		    else
+		    		dbOperations.updateUser((long)user.getValue("id"), token);
+		    		    		    
 		    scanner.close();
-		    return true;
+		    return user;
 		    
 		 
 		} catch (Exception e) {
@@ -95,13 +85,37 @@ public class UserController {
 		  
 		    if (facebookConneciton != null) {
 		    		facebookConneciton.disconnect();
-	    }
+		    }
 	    
-	  }
+		}
 		
-	return result;
+		return null;
 		
 	}
 		
+	
+	public boolean logoutUser(long id, String token) {
+		
+		try {
+			
+			User user = dbOperations.getUser(id);
+			
+			if(user == null)
+				return false;
+						
+			if(!token.equals(user.getValue("token")))
+				return false;
+			
+			return dbOperations.updateUser(id, "");
+			
+			
+			
+		} catch (RemoteException | SQLException e) {
+			
+			return false;
+		}
+		
+				
+	}
 	
 }

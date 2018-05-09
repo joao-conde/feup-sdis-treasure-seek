@@ -59,4 +59,10 @@ public class ReplyMessage {
 		
 	}
 	
+	public static ReplyMessageStatus parseResponse(String raw) throws ParseMessageException {
+		
+		return ReplyMessageStatus.type(raw);
+		
+	}
+	
 }

@@ -7,6 +7,9 @@ import java.util.HashMap;
 
 import javax.naming.InvalidNameException;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 public abstract class Model implements Serializable {
 	
 	private static final long serialVersionUID = -2172782761913177196L;
@@ -52,9 +55,9 @@ public abstract class Model implements Serializable {
 		
 	}
 	
-	private ModelType modelType;
-	private HashMap<String,Object> values = new HashMap<>();
-	private String[] fields;
+	protected ModelType modelType;
+	protected HashMap<String,Object> values = new HashMap<>();
+	protected String[] fields;
 	
 	public Model(ModelType modelType, String[] fields) {
 		this.modelType = modelType;
@@ -95,6 +98,25 @@ public abstract class Model implements Serializable {
 			return this.values.get(field);
 		
 		return null;
+		
+	}
+	
+	public JSONObject toJSON() {
+		
+		JSONObject result = new JSONObject();
+		
+		for(String key : values.keySet()) {
+			
+			try {
+				result.put(key, values.get(key));
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+			
+		}
+		
+		return result;
+		
 		
 	}
 		

@@ -211,7 +211,7 @@ public class Message {
 			
 			if(messageType == MessageType.CREATE || messageType == MessageType.UPDATE || messageType == MessageType.LOGIN || messageType == MessageType.LOGOUT) {
 				
-				String bodyString = messageScanner.next();
+				String bodyString = messageScanner.nextLine();
 				
 				JSONObject body = parseBody(bodyString);
 				message = new Message(header, body);

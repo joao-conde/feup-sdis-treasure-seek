@@ -3,7 +3,9 @@ package sdis.communications;
 import org.json.JSONArray;
 import org.json.JSONException;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
@@ -70,15 +72,17 @@ public class ServerMessage {
 
     public static ServerMessage parseServerMessage(String raw) throws ParseMessageException, JSONException {
 
-        String[] messagePortions = raw.split(" ");
+        Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(new ByteArrayInputStream(raw.getBytes()))));
 
-        if(messagePortions.length == 0)
+        if(!scanner.hasNext())
             throw new ParseMessageException("No message status");
 
-        ServerMessage message = new ServerMessage(ReplyMessageStatus.type(messagePortions[0]));
+        ServerMessage message = new ServerMessage(ReplyMessageStatus.type(scanner.next()));
 
-        if(messagePortions.length == 2)
-            message.setBody(new JSONArray(messagePortions[1]));
+        if(scanner.hasNextLine())
+            message.setBody(new JSONArray(scanner.nextLine()));
+
+        scanner.close();
 
         return message;
 
