@@ -30,7 +30,8 @@ public class Message {
 		LOGIN("LOGIN"),
 		LOGOUT("LOGOUT"),
 		RETRIEVE_HOST("RETRIEVE_HOST"),
-		NEW_SERVER("NEW_SERVER");
+		NEW_SERVER("NEW_SERVER"),
+		SHUTDOWN_SERVER("SHUTDOWN_SERVER");
 		
 		static final ArrayList<String> types = new ArrayList<String>(Arrays.asList("CREATE","UPDATE","DELETE","RETRIEVE","LOGIN","LOGOUT","RETRIEVE_HOST","NEW_SERVER"));
 		

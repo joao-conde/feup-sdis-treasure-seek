@@ -31,24 +31,18 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 	public static String[] ENC_CYPHER_SUITES = new String[] {"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256"};
 	
     private static final int REGISTRY_PORT = 1099;
-    private static final String DBNAME = "treasureSeekDB.db";
-    private static final String DBURL = "jdbc:sqlite:../db/" + DBNAME;
+    private String DBNAME;
+    private String DBURL;
+    public int dbNo;
     
-    private Connection connection = DriverManager.getConnection(DBURL);
+    private Registry registry;
+    private Connection connection;
 
     
     protected DBServer() throws Exception {
-    		super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
-    }
-    
-	public static void main(String[] args) throws Exception {
-		
-		Utils.setSecurityProperties();       
-		
-		Registry registry;
+		super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
 		
 		try{
-			
 			registry = LocateRegistry.createRegistry(REGISTRY_PORT,
 		            new SslRMIClientSocketFactory(),
 		            new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, true));
@@ -61,13 +55,10 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
             System.out.println("registry loaded.");
 		}
 		
-		DBServer dbServer = new DBServer();
-//		DBOperations dbOps = (DBOperations) UnicastRemoteObject.exportObject(dbServer, 0);
-
-		int dbNo = 1;
+		dbNo = 1;
 		while(true) {
 			try{
-				registry.bind("db_" + dbNo, dbServer); 
+				registry.bind("db_" + dbNo, this); 
 	            System.out.println("obj bound: db_" + dbNo);
 				break;
 			}
@@ -81,7 +72,18 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 			}
 		}
 		
-		Runtime.getRuntime().addShutdownHook(new Thread(new DBServer.CloseDBServer(dbNo)));
+		DBNAME = "treasureSeekDB" + dbNo + ".db";
+		DBURL = "jdbc:sqlite:../db/" + DBNAME;
+		connection = DriverManager.getConnection(DBURL);
+    }
+    
+	public static void main(String[] args) throws Exception {
+		
+		Utils.setSecurityProperties();       
+		
+		DBServer dbServer = new DBServer();		
+	
+		Runtime.getRuntime().addShutdownHook(new Thread(new DBServer.CloseDBServer(dbServer.dbNo)));
 	}	
 	
 	static class CloseDBServer implements Runnable{
