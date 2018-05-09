@@ -67,6 +67,8 @@ public class AppServer{
         
         AppServer appServer = new AppServer(loadBalancerHost, clientServerPort);
             
+		Runtime.getRuntime().addShutdownHook(new Thread(new AppServer.CloseAppServer(appServer)));
+
         appServer.receiveCalls();
 
     }
@@ -126,22 +128,7 @@ public class AppServer{
 			} catch (SSLHandshakeException e) {
 				System.out.println("App Server could not perform SSL handshake with Load Balancer on host " + lbHostAddress + ":" + LoadBalancer.SERVER_PORT);
 				System.exit(1);
-			} catch (UnknownHostException e) {
-				System.out.println("App Server could not connect to Load Balancer on host " + lbHostAddress + ":" + LoadBalancer.SERVER_PORT);
-				System.exit(1);
-			} catch (IOException e) {
-				System.out.println("App Server could not connect to Load Balancer on host " + lbHostAddress + ":" + LoadBalancer.SERVER_PORT);
-				System.exit(1);
-			} catch (ParseMessageException e) {
-				System.out.println("App Server could not connect to Load Balancer on host " + lbHostAddress + ":" + LoadBalancer.SERVER_PORT);
-				System.exit(1);
-			} catch (DuplicatedAppServer e) {
-				System.out.println("App Server could not connect to Load Balancer on host " + lbHostAddress + ":" + LoadBalancer.SERVER_PORT);
-				System.exit(1);
-			} catch (NonExistentAppServer e) {
-				System.out.println("App Server could not connect to Load Balancer on host " + lbHostAddress + ":" + LoadBalancer.SERVER_PORT);
-				System.exit(1);
-			} catch (JSONException e) {
+			} catch (IOException | ParseMessageException | DuplicatedAppServer | NonExistentAppServer | JSONException e) {
 				System.out.println("App Server could not connect to Load Balancer on host " + lbHostAddress + ":" + LoadBalancer.SERVER_PORT);
 				System.exit(1);
 			}
@@ -353,9 +340,14 @@ public class AppServer{
 
 		public void run() {
 			try {
-				appServer.announceToLB(appServer.lbHostAddress, Message.MessageType.SHUTDOWN_SERVER);
-			} catch (ParseMessageException | DuplicatedAppServer | NonExistentAppServer | IOException
-					| InterruptedException | JSONException e) {
+    			appServer.announceToLB(appServer.lbHostAddress, Message.MessageType.SHUTDOWN_SERVER);
+			} catch (SSLHandshakeException e) {
+				System.out.println("App Server could not perform SSL handshake with Load Balancer on host " + appServer.lbHostAddress + ":" + LoadBalancer.SERVER_PORT);
+				System.exit(1);
+			} catch (IOException | ParseMessageException | DuplicatedAppServer | NonExistentAppServer | JSONException e) {
+				System.out.println("App Server could not connect to Load Balancer on host " + appServer.lbHostAddress + ":" + LoadBalancer.SERVER_PORT);
+				System.exit(1);
+			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
 		};

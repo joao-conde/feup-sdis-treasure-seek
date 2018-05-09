@@ -120,11 +120,11 @@ public class LoadBalancer {
 
 			case NEW_SERVER:
 			
-				Pair<String,String> serverID = new Pair<String,String>(message.getBody().get("host").toString(), 
+				Pair<String,String> newServerID = new Pair<String,String>(message.getBody().get("host").toString(), 
 						message.getBody().get("port").toString());
 				
-				if(!availableServers.contains(serverID)) {
-					availableServers.add(serverID);
+				if(!availableServers.contains(newServerID)) {
+					availableServers.add(newServerID);
 					reply = ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK);
 				}
 				else {
@@ -133,6 +133,15 @@ public class LoadBalancer {
 					reply = ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST, jsonArray);
 				}
 						
+				break;
+			
+			case SHUTDOWN_SERVER:
+				Pair<String,String> oldServerID = new Pair<String,String>(message.getBody().get("host").toString(), 
+						message.getBody().get("port").toString());
+				
+				availableServers.remove(oldServerID);
+				
+				reply = ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK);
 				break;
 
 			default:
