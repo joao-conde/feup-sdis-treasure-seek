@@ -100,11 +100,11 @@ public class MainActivity extends AppCompatActivity {
         else {
 
             loginButton.setText(getString(R.string.login));
-            loginButton.setEnabled(checkIpAddress(ipTextView.getText()));
             usernameTextView.setText(getString(R.string.default_username));
 
-
         }
+
+        loginButton.setEnabled(checkIpAddress(ipTextView.getText()));
 
     }
 
