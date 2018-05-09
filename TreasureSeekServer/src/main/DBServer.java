@@ -1,5 +1,6 @@
 package main;
 
+import java.io.File;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.rmi.AlreadyBoundException;
@@ -14,6 +15,8 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Scanner;
 
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import javax.rmi.ssl.SslRMIServerSocketFactory;
@@ -34,6 +37,8 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 	public static String[] ENC_PROTOCOLS = new String[] {"TLSv1.2"};
 	public static String[] ENC_CYPHER_SUITES = new String[] {"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256"};
 	
+	private static final String DB_PATH = "../db/";
+	
     private static final int REGISTRY_PORT = 1099;
     private static final String RMI_PREFIX = "db_";
 
@@ -43,7 +48,8 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
     
     private Registry registry;
     private Connection connection;
-
+    
+   
     
     protected DBServer() throws Exception {
 		super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
@@ -79,9 +85,31 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 			}
 		}
 		
+		
+		
 		DBNAME = "treasureSeekDB" + dbNo + ".db";
 		DBURL = "jdbc:sqlite:../db/" + DBNAME;
+		
+		boolean dbFileExists = new File(DB_PATH + DBNAME).exists();
+				
 		connection = DriverManager.getConnection(DBURL);
+
+		if(!dbFileExists) {		
+			String schema = "";
+			Scanner scanner = new Scanner(new File(DB_PATH + "seed.sql"));
+			
+			while(scanner.hasNextLine()) {
+				schema += scanner.nextLine();
+			}
+			
+			scanner.close();
+						
+			Statement st = connection.createStatement();
+			st.executeUpdate(schema);
+			st.close();
+			
+		}
+	
     }
     
 	public static void main(String[] args) throws Exception {
