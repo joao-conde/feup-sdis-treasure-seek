@@ -33,7 +33,7 @@ public class Message {
 		NEW_SERVER("NEW_SERVER"),
 		SHUTDOWN_SERVER("SHUTDOWN_SERVER");
 		
-		static final ArrayList<String> types = new ArrayList<String>(Arrays.asList("CREATE","UPDATE","DELETE","RETRIEVE","LOGIN","LOGOUT","RETRIEVE_HOST","NEW_SERVER"));
+		static final ArrayList<String> types = new ArrayList<String>(Arrays.asList("CREATE","UPDATE","DELETE","RETRIEVE","LOGIN","LOGOUT","RETRIEVE_HOST","NEW_SERVER","SHUTDOWN_SERVER"));
 		
 		public String description;
 		
@@ -60,7 +60,9 @@ public class Message {
 				case 6:
 					return MessageType.RETRIEVE_HOST;
 				case 7:
-					return MessageType.NEW_SERVER;
+					return MessageType.NEW_SERVER;				
+				case 8:
+					return MessageType.SHUTDOWN_SERVER;
 
 				default:
 					throw new ParseMessageException("Invalid Protocol Action");
@@ -190,21 +192,20 @@ public class Message {
 		MessageType messageType = MessageType.type(messageTypeString);
 		MessageHeader header = new MessageHeader(messageType);
 
+		String bodyString;
+		JSONObject body;
 		
-		if(messageType == MessageType.RETRIEVE_HOST) {
+		switch (messageType) {
+		case RETRIEVE_HOST:
 			message = new Message(header);
-		}
-		
-		else if(messageType == MessageType.NEW_SERVER) {
-			
-			String bodyString = messageScanner.next();
-			JSONObject body = parseBody(bodyString);
+			break;
+		case NEW_SERVER:
+		case SHUTDOWN_SERVER:
+			bodyString = messageScanner.next();
+			body = parseBody(bodyString);
 			message = new Message(header, body);
-			
-		}
-			
-		
-		else {
+			break;
+		default:
 			resourcePathString = messageScanner.next();
 			ArrayList<Pair<Model.ModelType,Integer>> pathToResource = parsePath(resourcePathString);
 			header.setResourcePath(pathToResource);
@@ -212,14 +213,14 @@ public class Message {
 			
 			if(messageType == MessageType.CREATE || messageType == MessageType.UPDATE || messageType == MessageType.LOGIN || messageType == MessageType.LOGOUT) {
 				
-				String bodyString = messageScanner.nextLine();
+				bodyString = messageScanner.nextLine();
 				
-				JSONObject body = parseBody(bodyString);
+				body = parseBody(bodyString);
 				message = new Message(header, body);
 				
 				
 			}
-			
+			break;
 		}
 		
 			
