@@ -239,6 +239,8 @@ public class AppServer{
 				
 				case LOGIN:
 					
+					System.out.println("LOGIN APP SERVER");
+					
 					User user = userController.loginUser(receivedMessage.getBody().getString("token"));
 					
 					if(user != null) {

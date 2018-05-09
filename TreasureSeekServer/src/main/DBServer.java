@@ -35,6 +35,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 	public static String[] ENC_CYPHER_SUITES = new String[] {"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256"};
 	
     private static final int REGISTRY_PORT = 1099;
+    private static final String RMI_PREFIX = "db_";
 
     private String DBNAME;
     private String DBURL;
@@ -64,12 +65,12 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 		while(true) {
 			try{
 
-				registry.bind("db_" + dbNo, this); 
-	            System.out.println("obj bound: db_" + dbNo);
+				registry.bind(RMI_PREFIX + dbNo, this); 
+	            System.out.println("obj bound: " + RMI_PREFIX + dbNo);
 				break;
 			}
 			catch(AlreadyBoundException e) {
-	            System.out.println("obj already bound: db_" + dbNo);
+	            System.out.println("obj already bound: " + RMI_PREFIX + dbNo);
 				dbNo++;
 			}
 			catch(RemoteException e) {
@@ -146,12 +147,14 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
     	        	((DBOperations) registry.lookup(db)).insertUser(false, id, email, token, name);
     	        	
     	        }
+    	        
+    	        System.out.println("insertUser called for other DB");
     	    }
             
             return user;
 
             
-        } catch (SQLException | UnknownHostException e) {
+        } catch (SQLException | NotBoundException e) {
             System.out.println(e.getMessage());
             return null;
         }
@@ -207,6 +210,8 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
     	        	((DBOperations) registry.lookup(db)).updateUser(false, id, token);
     	        	
     	        }
+    	        
+    	        System.out.println("updateUser called for other DB");
     	    }
             
             
@@ -214,7 +219,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
             return true;
 
             
-        } catch (SQLException e) {
+        } catch (SQLException | NotBoundException e) {
             System.out.println(e.getMessage());
             return false;
         } 
