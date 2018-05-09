@@ -12,6 +12,8 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
+
+import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,6 +32,7 @@ import communications.Message;
 import communications.ReplyMessage;
 import communications.ReplyMessage.ReplyMessageStatus;
 import controller.UserController;
+import model.Treasure;
 import model.User;
 import util.DuplicatedAppServer;
 import util.ParseMessageException;
@@ -242,10 +245,22 @@ public class AppServer{
 					if(user != null) {
 						
 						JSONArray body = new JSONArray();
+						
 						JSONObject userJson = user.toJSON();
 						body.put(userJson);
 						
 						System.out.println("User " + (String) user.getValue("name")  + " logged in");
+						
+						ArrayList<Treasure> allTreasures = userController.getAllTreasures();
+						JSONArray allTreasuresJSONArray = new JSONArray();
+						
+						for(Treasure treasure : allTreasures) {
+							
+							allTreasuresJSONArray.put(treasure.toJSON());
+							
+						}
+						
+						body.put(allTreasuresJSONArray);
 						
 						return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK, body);
 					}

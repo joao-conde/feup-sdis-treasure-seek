@@ -7,11 +7,13 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.rmi.RemoteException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Scanner;
 
 import org.json.JSONObject;
 
 import main.DBOperations;
+import model.Treasure;
 import model.User;
 
 public class UserController {
@@ -19,7 +21,6 @@ public class UserController {
 	private static final String FACEBOOK_API_ADDRES = "https://graph.facebook.com/v2.11/"; 
 	
 	private DBOperations dbOperations;
-	
 	
 	
 	public UserController(DBOperations dbOperations) {
@@ -114,8 +115,17 @@ public class UserController {
 			
 			return false;
 		}
-		
 				
+	}
+	
+	public ArrayList<Treasure> getAllTreasures() {
+		
+		try {
+			return dbOperations.getAllTreasures();
+		}
+		catch(RemoteException | SQLException e) {
+			return null;
+		}
 	}
 	
 }

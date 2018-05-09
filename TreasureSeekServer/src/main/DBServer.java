@@ -14,18 +14,17 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import javax.rmi.ssl.SslRMIServerSocketFactory;
 
+import model.Treasure;
 import model.User;
 import util.Utils;
 
 public class DBServer extends UnicastRemoteObject implements DBOperations{
 
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 	public static String[] ENC_PROTOCOLS = new String[] {"TLSv1.2"};
 	public static String[] ENC_CYPHER_SUITES = new String[] {"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256"};
@@ -184,6 +183,33 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
             System.out.println(e.getMessage());
             return false;
         } 
+		
+		
+	}
+
+	@Override
+	public ArrayList<Treasure> getAllTreasures() throws RemoteException, SQLException {
+		
+		PreparedStatement stmt = connection.prepareStatement(
+			"SELECT * from treasure"
+        );
+		
+		ResultSet result = stmt.executeQuery();
+		ArrayList<Treasure> treasures = new ArrayList<>();
+		
+		while(result.next()) {
+			
+			Treasure treasure = new Treasure();
+			treasure.setValue("id", result.getInt(1));
+			treasure.setValue("latitude", result.getDouble(2));
+			treasure.setValue("longitude", result.getDouble(3));
+			treasure.setValue("description", result.getString(4));
+			treasures.add(treasure);
+			
+		}
+		
+					
+		return treasures;
 		
 		
 	}

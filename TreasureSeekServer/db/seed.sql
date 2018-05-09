@@ -18,7 +18,8 @@ CREATE TABLE treasure (
     latitude REAL NOT NULL,
     longitude REAL NOT NULL,
     description TEXT,
-    userCreatorId INTEGER, 
+    userCreatorId INTEGER,
+    challengeSolution TEXT, 
     FOREIGN KEY(userCreatorId) REFERENCES user(id)
 );
 

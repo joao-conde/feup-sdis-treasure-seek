@@ -2,19 +2,25 @@ package sdis.controller;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.Pair;
 
 import com.facebook.AccessToken;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
 
 import sdis.communications.ClientMessage;
 import sdis.communications.ConnectionHelper;
 import sdis.communications.ServerMessage;
 import sdis.model.Model;
+import sdis.model.Treasure;
 import sdis.model.User;
 import sdis.treasureseek.R;
 import sdis.util.NoAvailableServer;
@@ -23,16 +29,30 @@ import sdis.util.ParseMessageException;
 
 public class Controller {
 
+    private static Controller instance;
+
+    public static Controller getInstance() {
+        return instance;
+    }
+
+    public static Controller getInstance(Context context) {
+
+        if(instance == null)
+            instance = new Controller(context);
+        return instance;
+
+    }
+
     private Context context;
     private SharedPreferences preferences;
     private User loggedUser;
     private ConnectionHelper connectionHelper;
+    private ArrayList<Treasure> treasures = new ArrayList<>();
 
     public static int LOAD_BALANCER_PORT = 6789;
 
 
-
-    public Controller(Context context) {
+    private Controller(Context context) {
         this.context = context;
         this.preferences = context.getSharedPreferences(context.getString(R.string.treasureSeekPreferences), Context.MODE_PRIVATE);
         this.connectionHelper = new ConnectionHelper(context);
@@ -155,5 +175,15 @@ public class Controller {
         return loggedUser;
     }
 
+
+    public void setTreasures(JSONArray array) throws JSONException {
+
+        for(int i = 0; i < array.length(); i++) {
+
+            this.treasures.add(new Treasure((JSONObject) array.get(i)));
+
+        }
+
+    }
 
 }
