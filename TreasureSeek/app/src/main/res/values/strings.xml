@@ -11,7 +11,10 @@
     <string name="userId">Id</string>
     <string name="isAdmin">IsAdmin</string>
     <string name="connectionError">Oops, there was a problem connecting to Treasure Seek! Please try again later.</string>
-    <string name="login">Login with facebook</string>
+    <string name="login">Login</string>
     <string name="logout">Logout</string>
     <string name="title_activity_treasure_map">Map</string>
+    <string name="dialogTreasureQuestion">Enter Treasure Solution To Conquer It</string>
+    <string name="send_treasure_answer">Send My Answer</string>
+    <string name="answer_title">Answer</string>
 </resources>

@@ -35,6 +35,9 @@ public class ConnectionHelper {
     private static final String[] ENC_PROTOCOLS = new String[] {"TLSv1.2"};
     private static final int TIME_OUT = 5000;
 
+    private String loadBalancerAddress;
+
+
     private static class Connection {
 
         protected int port;
@@ -91,8 +94,6 @@ public class ConnectionHelper {
         protected Socket buildSocket() throws IOException {
 
             SSLSocketFactory factory = sslContext.getSocketFactory();
-
-            //SSLSocket socket = (SSLSocket) factory.createSocket(InetAddress.getByName(hostAddress),port);
 
             SSLSocket socket = (SSLSocket) factory.createSocket();
 
@@ -202,6 +203,11 @@ public class ConnectionHelper {
 
     }
 
+    public String getLoadBalancerAddress() {
+        return loadBalancerAddress;
+    }
 
-
+    public void setLoadBalancerAddress(String loadBalancerAddress) {
+        this.loadBalancerAddress = loadBalancerAddress;
+    }
 }

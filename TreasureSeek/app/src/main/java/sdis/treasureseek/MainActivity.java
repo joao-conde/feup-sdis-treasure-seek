@@ -35,12 +35,12 @@ import sdis.controller.Controller;
 import sdis.util.NoAvailableServer;
 import sdis.util.ParseMessageException;
 
+
 public class MainActivity extends AppCompatActivity {
 
     CallbackManager facebookCallbackManager = CallbackManager.Factory.create();
 
     Button loginButton;
-    TextView usernameTextView;
     ProgressBar progressBar;
     TextView ipTextView;
 
@@ -71,15 +71,13 @@ public class MainActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.loginProgressBar);
         progressBar.setVisibility(View.GONE);
 
-        usernameTextView = this.findViewById(R.id.user_name);
-
         ipTextView = findViewById(R.id.textIp);
         ipTextView.setOnKeyListener(new IpTextViewListener());
 
         this.facebookAccessToken = AccessToken.getCurrentAccessToken();
 
-
-        toggleButtons();
+        ipTextView.setText("172.30.13.189");
+        loginButton.setEnabled(true);
 
     }
 
@@ -89,27 +87,8 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
     }
 
-    private void toggleButtons() {
 
-
-        if(controller.isLogged()) {
-
-            loginButton.setText(getString(R.string.logout));
-            usernameTextView.setText((String) controller.getLoggedUser().getValue("name"));
-            navigateToMap();
-        }
-        else {
-
-            loginButton.setText(getString(R.string.login));
-            usernameTextView.setText(getString(R.string.default_username));
-
-        }
-
-        loginButton.setEnabled(checkIpAddress(ipTextView.getText()));
-
-    }
-
-    private class LoginToTreasureSeek extends AsyncTask<Void,Void,ServerMessage> {
+    private class LoginToTreasureSeekTask extends AsyncTask<Void,Void,ServerMessage> {
 
 
         @Override
@@ -140,6 +119,7 @@ public class MainActivity extends AppCompatActivity {
                     JSONArray treasures = (JSONArray) reply.getBody().get(1);
                     controller.setTreasures(treasures);
                     controller.saveSession(user);
+                    navigateToMap();
 
                 } catch (JSONException e) {
                     showConnectionError();
@@ -154,8 +134,6 @@ public class MainActivity extends AppCompatActivity {
                 fbLoginManager.logOut();
             }
 
-
-            toggleButtons();
 
         }
     }
@@ -186,6 +164,7 @@ public class MainActivity extends AppCompatActivity {
 
             if(reply != null && reply.getStatus() == ServerMessage.ReplyMessageStatus.OK) {
                 controller.deleteSession();
+                loginButton.setText(getString(R.string.login));
                 fbLoginManager.logOut();
             }
 
@@ -193,15 +172,11 @@ public class MainActivity extends AppCompatActivity {
             else
                 showConnectionError();
 
-
-            toggleButtons();
-
         }
 
     }
 
     private class LoginListener implements View.OnClickListener {
-
 
         @Override
         public void onClick(View v) {
@@ -218,7 +193,7 @@ public class MainActivity extends AppCompatActivity {
         public void onSuccess(LoginResult loginResult) {
 
             facebookAccessToken = loginResult.getAccessToken();
-            new LoginToTreasureSeek().execute();
+            new LoginToTreasureSeekTask().execute();
 
         }
 
@@ -275,10 +250,20 @@ public class MainActivity extends AppCompatActivity {
             appServerAddress = server.first;
             appServerPort = server.second;
 
-            if(!controller.isLogged())
-                fbLoginManager.logInWithReadPermissions(MainActivity.this, Arrays.asList(getResources().getStringArray(R.array.facebook_permissions)));
+            controller.setLoadBalancerAddress(String.valueOf(ipTextView.getText()));
+
+            if(controller.isLogged()) {
+
+                progressBar.setVisibility(View.GONE);
+
+                if(loginButton.getText().equals(getString(R.string.login)))
+                    new LoginToTreasureSeekTask().execute();
+                else
+                    new LogoutFromTreasureSeekTask().execute();
+            }
+
             else
-                new LogoutFromTreasureSeekTask().execute();
+                fbLoginManager.logInWithReadPermissions(MainActivity.this, Arrays.asList(getResources().getStringArray(R.array.facebook_permissions)));
 
         }
     }
@@ -307,8 +292,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void navigateToMap() {
 
+        loginButton.setText(getString(R.string.logout));
         Intent intent = new Intent(MainActivity.this, TreasureMapActivity.class);
         startActivity(intent);
+
 
 
     }

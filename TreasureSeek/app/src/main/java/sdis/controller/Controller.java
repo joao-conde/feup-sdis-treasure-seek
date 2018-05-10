@@ -2,8 +2,6 @@ package sdis.controller;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.Parcel;
-import android.os.Parcelable;
 import android.util.Pair;
 
 import com.facebook.AccessToken;
@@ -13,7 +11,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
 
 import sdis.communications.ClientMessage;
@@ -48,6 +45,7 @@ public class Controller {
     private User loggedUser;
     private ConnectionHelper connectionHelper;
     private ArrayList<Treasure> treasures = new ArrayList<>();
+    private String loadBalancerAddress;
 
     public static int LOAD_BALANCER_PORT = 6789;
 
@@ -136,6 +134,13 @@ public class Controller {
 
     }
 
+    public ArrayList<Treasure> getAllTresoures() {
+
+
+        return treasures;
+
+    }
+
     public void saveSession(JSONObject user) throws JSONException {
 
         SharedPreferences.Editor editor = preferences.edit();
@@ -178,6 +183,8 @@ public class Controller {
 
     public void setTreasures(JSONArray array) throws JSONException {
 
+        this.treasures = new ArrayList<>();
+
         for(int i = 0; i < array.length(); i++) {
 
             this.treasures.add(new Treasure((JSONObject) array.get(i)));
@@ -186,4 +193,7 @@ public class Controller {
 
     }
 
+    public void setLoadBalancerAddress(String loadBalancerAddress) {
+        this.loadBalancerAddress = loadBalancerAddress;
+    }
 }
