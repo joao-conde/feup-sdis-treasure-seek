@@ -7,11 +7,13 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.rmi.RemoteException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Scanner;
 
 import org.json.JSONObject;
 
 import main.DBOperations;
+import model.Treasure;
 import model.User;
 
 public class UserController {
@@ -19,7 +21,6 @@ public class UserController {
 	private static final String FACEBOOK_API_ADDRES = "https://graph.facebook.com/v2.11/"; 
 	
 	private DBOperations dbOperations;
-	
 	
 	
 	public UserController(DBOperations dbOperations) {
@@ -66,12 +67,12 @@ public class UserController {
 		    
 		    System.out.println(userInfo.toString());
 		    
-		    User user = dbOperations.getUser(Long.parseLong(userInfo.getString("id")));
+		    User user = dbOperations.getUser(true, Long.parseLong(userInfo.getString("id")));
 		    
 		    if(user == null)
-		    		user = dbOperations.insertUser(userInfo.getLong("id"), userInfo.getString("email"),  token, userInfo.getString("name"));
+		    		user = dbOperations.insertUser(true, userInfo.getLong("id"), userInfo.getString("email"),  token, userInfo.getString("name"));
 		    else
-		    		dbOperations.updateUser((long)user.getValue("id"), token);
+		    		dbOperations.updateUser(true, (long)user.getValue("id"), token);
 		    		    		    
 		    scanner.close();
 		    return user;
@@ -98,7 +99,7 @@ public class UserController {
 		
 		try {
 			
-			User user = dbOperations.getUser(id);
+			User user = dbOperations.getUser(true, id);
 			
 			if(user == null)
 				return false;
@@ -106,7 +107,7 @@ public class UserController {
 			if(!token.equals(user.getValue("token")))
 				return false;
 			
-			return dbOperations.updateUser(id, "");
+			return dbOperations.updateUser(true, id, "");
 			
 			
 			
@@ -114,8 +115,17 @@ public class UserController {
 			
 			return false;
 		}
-		
 				
+	}
+	
+	public ArrayList<Treasure> getAllTreasures() {
+		
+		try {
+			return dbOperations.getAllTreasures();
+		}
+		catch(RemoteException | SQLException e) {
+			return null;
+		}
 	}
 	
 }

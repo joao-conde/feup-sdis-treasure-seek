@@ -20,9 +20,9 @@ import com.facebook.FacebookException;
 import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.w3c.dom.Text;
 
 import java.io.IOException;
 
@@ -60,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        controller = new Controller(getApplicationContext());
+        controller = Controller.getInstance(getApplicationContext());
 
         fbLoginManager = LoginManager.getInstance();
         fbLoginManager.registerCallback(facebookCallbackManager, new TreasureSeekFacebookCallback());
@@ -96,6 +96,7 @@ public class MainActivity extends AppCompatActivity {
 
             loginButton.setText(getString(R.string.logout));
             usernameTextView.setText((String) controller.getLoggedUser().getValue("name"));
+            navigateToMap();
         }
         else {
 
@@ -136,8 +137,9 @@ public class MainActivity extends AppCompatActivity {
 
                 try {
                     JSONObject user = (JSONObject) reply.getBody().get(0);
+                    JSONArray treasures = (JSONArray) reply.getBody().get(1);
+                    controller.setTreasures(treasures);
                     controller.saveSession(user);
-
 
                 } catch (JSONException e) {
                     showConnectionError();
@@ -301,6 +303,14 @@ public class MainActivity extends AppCompatActivity {
             loginButton.setEnabled(checkIpAddress(((TextView)v).getText()));
             return false;
         }
+    }
+
+    private void navigateToMap() {
+
+        Intent intent = new Intent(MainActivity.this, TreasureMapActivity.class);
+        startActivity(intent);
+
+
     }
 
 }

@@ -13,4 +13,5 @@
     <string name="connectionError">Oops, there was a problem connecting to Treasure Seek! Please try again later.</string>
     <string name="login">Login with facebook</string>
     <string name="logout">Logout</string>
+    <string name="title_activity_treasure_map">Map</string>
 </resources>
