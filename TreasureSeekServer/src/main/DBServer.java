@@ -44,27 +44,30 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
     private String DBNAME;
     private String DBURL;
     public int dbNo;
+    public String host;
     
     private Registry registry;
     private Connection connection;
     
    
     
-    protected DBServer() throws Exception {
+    protected DBServer(String host) throws Exception {
 		super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
 		
-		try{
-			registry = LocateRegistry.createRegistry(REGISTRY_PORT,
-		            new SslRMIClientSocketFactory(),
-		            new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, true));
-            System.out.println("registry created.");
-		}
-		catch(ExportException e){
-			registry = LocateRegistry.getRegistry(
-	                InetAddress.getLocalHost().getHostName(), REGISTRY_PORT,
-	                new SslRMIClientSocketFactory());
-            System.out.println("registry loaded.");
-		}
+//		try{
+//			registry = LocateRegistry.createRegistry(REGISTRY_PORT,
+//		            new SslRMIClientSocketFactory(),
+//		            new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, true));
+//            System.out.println("registry created.");
+//		}
+//		catch(ExportException e){
+//
+//		}
+		this.host = host;
+		
+		registry = LocateRegistry.getRegistry(
+				host, REGISTRY_PORT,
+				new SslRMIClientSocketFactory());		
 		
 		dbNo = 1;
 		while(true) {
@@ -79,8 +82,10 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 				dbNo++;
 			}
 			catch(RemoteException e) {
-	            System.out.println("Remote exception");
-				break;
+	            registry = LocateRegistry.createRegistry(REGISTRY_PORT,
+	    	            new SslRMIClientSocketFactory(),
+	    	            new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, true));
+	        	System.out.println("registry created.");
 			}
 		}
 		
@@ -113,27 +118,29 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
     
 	public static void main(String[] args) throws Exception {
 		
-		Utils.setSecurityProperties();       
+		Utils.setSecurityProperties();  
 		
-		DBServer dbServer = new DBServer();		
+		String host = args[0];
+		
+		DBServer dbServer = new DBServer(host);		
 	
-		Runtime.getRuntime().addShutdownHook(new Thread(new DBServer.CloseDBServer(dbServer.dbNo)));
+		Runtime.getRuntime().addShutdownHook(new Thread(new DBServer.CloseDBServer(dbServer)));
 	}	
 	
 	static class CloseDBServer implements Runnable{
-		int dbNo;
+		DBServer dbDerver;
 	
-		public CloseDBServer(int dbNo) {
-			this.dbNo = dbNo;
+		public CloseDBServer(DBServer dbDerver) {
+			this.dbDerver = dbDerver;
 		}
 
 		public void run() {
 			try {
 				Registry registry = LocateRegistry.getRegistry(
-		                InetAddress.getLocalHost().getHostName(), REGISTRY_PORT,
+						dbDerver.host, REGISTRY_PORT,
 		                new SslRMIClientSocketFactory());
-				registry.unbind(RMI_PREFIX + dbNo);
-			} catch (RemoteException | NotBoundException | UnknownHostException e) {
+				registry.unbind(RMI_PREFIX + dbDerver.dbNo);
+			} catch (RemoteException | NotBoundException e) {
 				e.printStackTrace();
 			}
 		};
