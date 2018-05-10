@@ -57,7 +57,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
 		
 		this.host = host;
-		
+    	System.out.println("registry loaded from " + host);
 		registry = LocateRegistry.getRegistry(
 				host, REGISTRY_PORT,
 				new SslRMIClientSocketFactory());		
