@@ -73,10 +73,7 @@ public class LoadBalancer {
 					reply = handleMessage(message);
 				
 			
-				socketOut.println(reply);
-
-				System.out.println("SENT MESSAGE " + reply);
-				
+				socketOut.println(reply);				
 
 				socketIn.close();
 				socketOut.close();
@@ -97,7 +94,6 @@ public class LoadBalancer {
 			
 			System.out.println(message);
 
-			
 			switch (msgType) {
 
 			case RETRIEVE_HOST:
@@ -163,11 +159,6 @@ public class LoadBalancer {
 		
 		clientSocket = new ServerSocket(CLIENT_PORT);
 		
-		// hard-coded for now, will come from app-server
-		//availableServers.add(new Pair<String, String>("IP1", "60"));
-		//availableServers.add(new Pair<String, String>("IP2", "61"));
-		//availableServers.add(new Pair<String, String>("IP3", "62"));
-
 		clientDispatcher();
 		serverDispatcher();
 
