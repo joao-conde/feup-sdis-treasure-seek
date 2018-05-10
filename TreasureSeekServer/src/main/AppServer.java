@@ -1,6 +1,7 @@
 package main;
 
 import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.io.BufferedReader;
@@ -12,6 +13,8 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
+
+import java.util.Enumeration;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -56,34 +59,7 @@ public class AppServer{
 	private String dbServerHostAddres;
 	private String lbHostAddress;
 
-  
-    public static void main(String[] args) throws InterruptedException {
-		
-        String loadBalancerHost = args[0];
-        int clientServerPort = Integer.parseInt(args[1]);
-        
-        AppServer appServer = new AppServer(loadBalancerHost, clientServerPort);
-            
-		Runtime.getRuntime().addShutdownHook(new Thread(new AppServer.CloseAppServer(appServer)));
-
-        appServer.receiveCalls();
-
-    }
-    
-    
-    private DBOperations getDBOperations() throws RemoteException, NotBoundException, UnknownHostException {
-    	
-    		Registry registry = LocateRegistry.getRegistry(
-    				InetAddress.getLocalHost().getHostName(), REGISTRY_PORT,
-                new SslRMIClientSocketFactory());
-         
-    		dbOperations = (DBOperations) registry.lookup("db_1");
-    		return dbOperations;
-
-    }
-    
-	
-    public AppServer(String loadBalancerHost, int serverClientPort) throws InterruptedException {
+	public AppServer(String loadBalancerHost, int serverClientPort) throws InterruptedException {
 		
     	Utils.setSecurityProperties();
 
@@ -133,6 +109,31 @@ public class AppServer{
     		 	
     		this.userController = new UserController(dbOperations);		
     	
+
+    }
+  
+    public static void main(String[] args) throws InterruptedException {
+		
+        String loadBalancerHost = args[0];
+        int clientServerPort = Integer.parseInt(args[1]);
+        
+        AppServer appServer = new AppServer(loadBalancerHost, clientServerPort);
+            
+		Runtime.getRuntime().addShutdownHook(new Thread(new AppServer.CloseAppServer(appServer)));
+
+		receiveCalls();
+    }
+    
+    
+    private DBOperations getDBOperations() throws RemoteException, NotBoundException, UnknownHostException {
+    	
+    		Registry registry = LocateRegistry.getRegistry(
+    				InetAddress.getLocalHost().getHostName(), REGISTRY_PORT,
+                new SslRMIClientSocketFactory());
+         
+    		dbOperations = (DBOperations) registry.lookup("db_1");
+    		return dbOperations;
+
     }
 	
 	
@@ -291,9 +292,9 @@ public class AppServer{
     		
     		JSONObject body = new JSONObject();
     		try {
-				body.put("host", InetAddress.getLocalHost().getHostAddress());
+				body.put("host", socket.getLocalAddress().getHostAddress());
 				body.put("port", this.serverClientPort);
-			} catch (JSONException e) {
+    		} catch (JSONException e) {
 				e.printStackTrace();
 			}
 	    		
