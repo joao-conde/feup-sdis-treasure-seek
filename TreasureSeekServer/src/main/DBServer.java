@@ -281,4 +281,44 @@ public class DBServer extends UnicastRemoteObject implements DBOperations{
 		
 	}
 
+	@Override
+	public ArrayList<Treasure> getAllTreasuresWithFoundInfo() throws RemoteException, SQLException {
+		
+		PreparedStatement stmt = connection.prepareStatement(
+			"SELECT * FROM (" +
+				"SELECT *, 0 as found" + 
+				"FROM treasure" + 
+				"WHERE (1, treasure.id)" + 
+				"IN (select * from user_treasure)" + 
+				
+				"UNION" + 
+				
+				"SELECT *, 1 as found" + 
+				"FROM treasure" + 
+				"WHERE (1, treasure.id)" + 
+				"NOT IN (select * from user_treasure)" +
+			");"
+        );
+		
+		ResultSet result = stmt.executeQuery();
+		ArrayList<Treasure> treasures = new ArrayList<>();
+		
+		while(result.next()) {
+			
+			Treasure treasure = new Treasure();
+			treasure.setValue("id", result.getInt(1));
+			treasure.setValue("latitude", result.getDouble(2));
+			treasure.setValue("longitude", result.getDouble(3));
+			treasure.setValue("description", result.getString(4));
+			treasure.setValue("found", result.getInt(5));
+			treasures.add(treasure);
+			
+		}
+		
+					
+		return treasures;
+		
+		
+	}
+
 }
