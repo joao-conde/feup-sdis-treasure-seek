@@ -125,7 +125,7 @@ public class AppServer{
             
 		Runtime.getRuntime().addShutdownHook(new Thread(new AppServer.CloseAppServer(appServer)));
 
-		receiveCalls();
+		appServer.receiveCalls();
     }
     
     
