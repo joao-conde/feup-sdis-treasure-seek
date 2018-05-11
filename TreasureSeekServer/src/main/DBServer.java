@@ -1,15 +1,11 @@
 package main;
 
 import java.io.File;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.rmi.AccessException;
 import java.rmi.AlreadyBoundException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -19,7 +15,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.sql.Statement;
 import java.util.Scanner;
-import java.util.concurrent.Callable;
 
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import javax.rmi.ssl.SslRMIServerSocketFactory;
@@ -27,6 +22,9 @@ import javax.rmi.ssl.SslRMIServerSocketFactory;
 import model.Treasure;
 import model.User;
 import util.Utils;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author jotac
@@ -323,6 +321,23 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		return treasures;
 		
 		
+	}
+
+	@Override
+	public boolean validateTreasure(int treasureId, String answer) throws RemoteException, SQLException {
+		
+		PreparedStatement stmt = connection.prepareStatement("SELECT challengeSolution FROM treasure WHERE id = ?");
+		stmt.setInt(1, treasureId);
+		ResultSet result = stmt.executeQuery();
+		
+		if (!result.next())
+			return false;
+		
+		String regex = ".* " + result.getString(1) + " .*"; 
+		Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+		Matcher matcher = pattern.matcher(answer);
+		
+		return matcher.matches();
 	}
 
 }

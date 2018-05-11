@@ -47,6 +47,9 @@ public class Controller {
     private ArrayList<Treasure> treasures = new ArrayList<>();
     private String loadBalancerAddress;
 
+    private String currentAppServerAddress;
+    private int currentAppServerPort;
+
     public static int LOAD_BALANCER_PORT = 6789;
 
 
@@ -99,6 +102,7 @@ public class Controller {
 
     }
 
+    
     public  Pair<String, Integer> getAvailableServer(String loadBalancerHostAddress) throws IOException, JSONException, ParseMessageException, NoAvailableServer {
 
         Pair<String,Integer> result;
@@ -111,6 +115,9 @@ public class Controller {
         String host  = reply.getBody().getJSONObject(0).getString("host");
         Integer port = reply.getBody().getJSONObject(0).getInt("port");
         result = new Pair<>(host,port);
+
+        this.currentAppServerAddress = result.first;
+        this.currentAppServerPort = result.second;
 
         return result;
 
