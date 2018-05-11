@@ -17,9 +17,10 @@ CREATE TABLE treasure (
     id INTEGER PRIMARY KEY AUTOINCREMENT,    
     latitude REAL NOT NULL,
     longitude REAL NOT NULL,
-    description TEXT,
-    userCreatorId INTEGER,
-    challengeSolution TEXT, 
+    description TEXT NOT NULL,
+    userCreatorId INTEGER NOT NULL,
+    challenge TEXT NOT NULL,
+    challengeSolution TEXT NOT NULL, 
     FOREIGN KEY(userCreatorId) REFERENCES user(id)
 );
 
