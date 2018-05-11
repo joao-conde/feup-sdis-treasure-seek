@@ -27,9 +27,8 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 	public static String[] ENC_CYPHER_SUITES = new String[] { "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256" };
 	
     private Registry registry;
-    private static DBManager dbManager;
 
-	private static final String DB_PATH = "../db/";
+//	private static final String DB_PATH = "../db/";
     private static final String RMI_PREFIX = "db_";
 
 	protected DBManager() throws RemoteException, DBManagerAlreadyExistsException, AlreadyBoundException {
@@ -52,7 +51,7 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 		Utils.setSecurityProperties();  
 
 		try {
-			dbManager = new DBManager();
+			new DBManager();
 		} 
 		catch (DBManagerAlreadyExistsException e) {
 			System.out.println(e.getMessage());
@@ -183,6 +182,40 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 			return false;
 		}
 		return true;
+	}
+
+	@Override
+	public boolean validateTreasure(int treasureId, String answer) throws RemoteException, SQLException {
+		boolean result = true;
+		
+		for (String db : registry.list()) {
+			if(db.equals("db_manager")) continue;
+			
+			try {
+				DBOperations dbOperations = (DBOperations) registry.lookup(db);
+				result = result && dbOperations.validateTreasure(treasureId, answer);
+			} catch (NotBoundException e) {
+				e.printStackTrace();
+			}
+		}		
+		return result;
+	}
+
+	@Override
+	public boolean insertFoundTreasure(int treasureId, long userId) throws RemoteException, SQLException {
+		boolean result = true;
+		
+		for (String db : registry.list()) {
+			if(db.equals("db_manager")) continue;
+			
+			try {
+				DBOperations dbOperations = (DBOperations) registry.lookup(db);
+				result = result && dbOperations.insertFoundTreasure(treasureId, userId);
+			} catch (NotBoundException e) {
+				e.printStackTrace();
+			}
+		}		
+		return result;
 	}
 
 }

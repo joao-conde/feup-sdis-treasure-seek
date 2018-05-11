@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Pair;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
@@ -19,10 +18,8 @@ import com.facebook.FacebookException;
 
 import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
-
-import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
+
 
 import java.io.IOException;
 
@@ -30,7 +27,6 @@ import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import sdis.communications.ServerMessage;
 import sdis.controller.Controller;
 import sdis.util.NoAvailableServer;
 import sdis.util.ParseMessageException;
@@ -48,9 +44,6 @@ public class MainActivity extends AppCompatActivity {
     AccessToken facebookAccessToken;
 
     Controller controller;
-
-    String appServerAddress;
-    int appServerPort;
 
     private static final Pattern ipPattern = Pattern.compile("^([0-9]{1,3}\\.){3}[0-9]{1,3}$");;
 
@@ -76,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
 
         this.facebookAccessToken = AccessToken.getCurrentAccessToken();
 
-        ipTextView.setText("172.30.13.189");
+        ipTextView.setText("192.168.1.73");
         loginButton.setEnabled(true);
 
     }
@@ -88,82 +81,64 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private class LoginToTreasureSeekTask extends AsyncTask<Void,Void,ServerMessage> {
+    private class LoginToTreasureSeekTask extends AsyncTask<Void,Void,Boolean> {
 
 
         @Override
-        protected ServerMessage doInBackground(Void... voids) {
+        protected Boolean doInBackground(Void... voids) {
 
-            ServerMessage reply = null;
+            boolean result = false;
 
             try  {
-                reply = controller.loginToTreasureSeek(appServerAddress, appServerPort);
+                result = controller.loginToTreasureSeek();
             }
 
             catch (IOException | ParseMessageException | JSONException e) {
                 System.out.println(e.getLocalizedMessage());
             }
 
-            return reply;
+            return result;
         }
 
         @Override
-        protected void onPostExecute(ServerMessage reply) {
+        protected void onPostExecute(Boolean result) {
 
-            progressBar.setVisibility(View.GONE);
-
-            if(reply != null && reply.getStatus() == ServerMessage.ReplyMessageStatus.OK) {
-
-                try {
-                    JSONObject user = (JSONObject) reply.getBody().get(0);
-                    JSONArray treasures = (JSONArray) reply.getBody().get(1);
-                    controller.setTreasures(treasures);
-                    controller.saveSession(user);
-                    navigateToMap();
-
-                } catch (JSONException e) {
-                    showConnectionError();
-                    return;
-                }
-
-
-            }
+            if(result == true)
+                navigateToMap();
 
             else {
                 showConnectionError();
                 fbLoginManager.logOut();
             }
 
-
         }
     }
 
-    private class LogoutFromTreasureSeekTask extends AsyncTask<Void,Void,ServerMessage> {
+    private class LogoutFromTreasureSeekTask extends AsyncTask<Void,Void,Boolean> {
 
 
         @Override
-        protected ServerMessage doInBackground(Void... voids) {
+        protected Boolean doInBackground(Void... voids) {
 
-            ServerMessage reply = null;
+            boolean result = false;
 
             try  {
-                reply = controller.logoutFromTreasureSeek(appServerAddress, appServerPort);
+                result = controller.logoutFromTreasureSeek();
             }
 
             catch (IOException | ParseMessageException | JSONException e) {
                 System.out.println(e.getLocalizedMessage());
             }
 
-            return reply;
+            return result;
         }
 
         @Override
-        protected void onPostExecute(ServerMessage reply) {
+        protected void onPostExecute(Boolean result) {
 
             progressBar.setVisibility(View.GONE);
 
-            if(reply != null && reply.getStatus() == ServerMessage.ReplyMessageStatus.OK) {
-                controller.deleteSession();
+            if(result == true) {
                 loginButton.setText(getString(R.string.login));
                 fbLoginManager.logOut();
             }
@@ -213,48 +188,44 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private class RequestAvailableServerTask extends AsyncTask<Void,Void,Pair<String,Integer>> {
+    private class RequestAvailableServerTask extends AsyncTask<Void,Void,Boolean> {
 
         @Override
         protected void onPreExecute() {
             progressBar.setVisibility(View.VISIBLE);
+            controller.setLoadBalancerAddress(String.valueOf(ipTextView.getText()));
         }
 
         @Override
-        protected Pair<String, Integer> doInBackground(Void... voids) {
+        protected Boolean doInBackground(Void... voids) {
 
-            Pair<String,Integer> server = null;
+            boolean result = false;
 
             try {
-                server = controller.getAvailableServer(String.valueOf(ipTextView.getText()));
+                result = controller.getAvailableServer();
 
 
             } catch (IOException | JSONException | ParseMessageException | NoAvailableServer e) {
                 e.printStackTrace();
             }
 
-            return server;
+            return result;
 
         }
 
         @Override
-        protected void onPostExecute(Pair<String, Integer> server) {
+        protected void onPostExecute(Boolean result) {
 
-            if(server == null) {
+            if(result == false) {
                 showConnectionError();
                 progressBar.setVisibility(View.GONE);
                 return;
 
             }
 
-            appServerAddress = server.first;
-            appServerPort = server.second;
 
-            controller.setLoadBalancerAddress(String.valueOf(ipTextView.getText()));
 
             if(controller.isLogged()) {
-
-                progressBar.setVisibility(View.GONE);
 
                 if(loginButton.getText().equals(getString(R.string.login)))
                     new LoginToTreasureSeekTask().execute();
@@ -269,6 +240,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private  void showConnectionError() {
+        progressBar.setVisibility(View.GONE);
         Toast.makeText(getApplicationContext(), R.string.connectionError, Toast.LENGTH_LONG).show();
     }
 
@@ -281,8 +253,6 @@ public class MainActivity extends AppCompatActivity {
 
     private class IpTextViewListener implements TextView.OnKeyListener {
 
-
-
         @Override
         public boolean onKey(View v, int keyCode, KeyEvent event) {
             loginButton.setEnabled(checkIpAddress(((TextView)v).getText()));
@@ -292,9 +262,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void navigateToMap() {
 
+
         loginButton.setText(getString(R.string.logout));
         Intent intent = new Intent(MainActivity.this, TreasureMapActivity.class);
         startActivity(intent);
+        progressBar.setVisibility(View.GONE);
 
 
 

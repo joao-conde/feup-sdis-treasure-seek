@@ -128,4 +128,38 @@ public class UserController {
 		}
 	}
 	
+	public boolean validateTreasure(int treasureId, String answer, String token, long userId) {
+		
+		try {
+			
+			User user = dbOperations.getUser(true, userId);
+			
+			if(user == null)
+				return false;
+			
+						
+			if(!token.equals(user.getValue("token")))
+				return false;
+			
+			boolean isCorrectAnswer = dbOperations.validateTreasure(treasureId, answer);
+			
+			
+			
+			if(!isCorrectAnswer)
+				return false;
+						
+			return dbOperations.insertFoundTreasure(treasureId, userId);
+			
+			
+			
+		} catch (RemoteException | SQLException e) {
+			
+			return false;
+		}
+		
+		
+		
+	}
+	
+	
 }

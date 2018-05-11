@@ -2,7 +2,6 @@ package sdis.treasureseek;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -63,8 +62,7 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
         locationRequest.setFastestInterval(2000);
         locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
 
-
-        TreasureMapActivity.this.setTitle((String) controller.getLoggedUser().getValue("name"));
+        TreasureMapActivity.this.setTitle(getString(R.string.treasure_map));
 
 
     }
@@ -84,7 +82,7 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
     public void onMapReady(GoogleMap googleMap) {
 
         mMap = googleMap;
-        LatLng feup = new LatLng(41.178539, -8.596096);
+        LatLng feupLocation = new LatLng(41.178539, -8.596096);
 
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -101,7 +99,7 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
         }
 
 
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(feup));
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(feupLocation));
         mMap.moveCamera(CameraUpdateFactory.zoomTo(17));
         drawTreasures();
 
@@ -111,6 +109,7 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main, menu);
+        menu.getItem(0).setTitle((String)controller.getLoggedUser().getValue("name"));
         return super.onCreateOptionsMenu(menu);
 
     }
@@ -122,7 +121,7 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
 
     private void drawTreasures() {
 
-        for (Treasure treasure : controller.getAllTresoures()) {
+        for (Treasure treasure : controller.getAllTreasures()) {
 
             LatLng pos = new LatLng((double) treasure.getValue("latitude"), (double) treasure.getValue("longitude"));
             Marker marker = mMap.addMarker(new MarkerOptions().position(pos).title((String) treasure.getValue("description")));
@@ -176,8 +175,6 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
     }
 
     class MarkerListener implements GoogleMap.OnMarkerClickListener {
-
-        AlertDialog.Builder dialog = new AlertDialog.Builder(getApplicationContext());
 
 
         @Override
