@@ -27,6 +27,7 @@ CREATE TABLE treasure (
 CREATE TABLE user_treasure (
     userId INTEGER NOT NULL,
     treasureId INTEGER NOT NULL,
+    PRIMARY KEY(userId,treasureId),
     FOREIGN KEY(userId) REFERENCES user(id),
     FOREIGN KEY(treasureId) REFERENCES treasure(id)
 );

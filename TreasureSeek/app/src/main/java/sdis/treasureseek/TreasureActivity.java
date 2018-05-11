@@ -106,9 +106,11 @@ public class TreasureActivity extends AppCompatActivity implements View.OnClickL
 
             if(result == true) {
 
+                tvTreasureDescription.setText(tvTreasureAnswer.getText()+"\n Correct!!");
+
             }
             else {
-
+                tvTreasureDescription.setText(tvTreasureAnswer.getText()+"\n Wrong!!");
             }
 
 

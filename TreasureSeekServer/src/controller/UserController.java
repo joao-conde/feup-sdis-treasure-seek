@@ -136,15 +136,18 @@ public class UserController {
 			
 			if(user == null)
 				return false;
+			
 						
 			if(!token.equals(user.getValue("token")))
 				return false;
 			
 			boolean isCorrectAnswer = dbOperations.validateTreasure(treasureId, answer);
 			
+			
+			
 			if(!isCorrectAnswer)
 				return false;
-			
+						
 			return dbOperations.insertFoundTreasure(treasureId, userId);
 			
 			

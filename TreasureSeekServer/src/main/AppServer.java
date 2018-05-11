@@ -17,7 +17,6 @@ import java.time.Duration;
 
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 
-import java.util.Enumeration;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Scanner;
@@ -43,6 +42,8 @@ import communications.Message;
 import communications.ReplyMessage;
 import communications.ReplyMessage.ReplyMessageStatus;
 import controller.UserController;
+import model.Model;
+import model.Model.ModelType;
 import model.Treasure;
 import model.User;
 import util.DuplicatedAppServer;
@@ -314,6 +315,29 @@ public class AppServer {
 
 				return ReplyMessage.buildResponseMessage(ReplyMessageStatus.UNAUTHORIZED);
 
+			
+			case CREATE:
+				
+				ModelType type = receivedMessage.getHeader().getResource().get(0).key;
+				
+				if(type == Model.ModelType.FOUND_TREASURE) {
+					
+					result = userController.validateTreasure(receivedMessage.getBody().getInt("treasureId"), receivedMessage.getBody().getString("answer"), receivedMessage.getBody().getString("token"), receivedMessage.getBody().getLong("userId"));
+					
+					if(result) {
+						
+						String name = "";
+						if (receivedMessage.getBody().has("name"))
+							name = receivedMessage.getBody().getString("name");
+
+						System.out.println("User " + name + " found a treasure");
+						ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK);
+						
+					}
+						
+					
+				}
+				
 			default:
 				return ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 			}

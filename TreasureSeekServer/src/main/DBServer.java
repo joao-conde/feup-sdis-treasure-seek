@@ -326,6 +326,8 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	@Override
 	public boolean validateTreasure(int treasureId, String answer) throws RemoteException, SQLException {
 		
+		System.out.println(treasureId);
+		
 		PreparedStatement stmt = connection.prepareStatement("SELECT challengeSolution FROM treasure WHERE id = ?");
 		stmt.setInt(1, treasureId);
 		ResultSet result = stmt.executeQuery();
@@ -333,7 +335,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		if (!result.next())
 			return false;
 		
-		String regex = ".* " + result.getString(1) + " .*"; 
+		String regex = ".*" + result.getString(1) + ".*"; 
 		Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
 		Matcher matcher = pattern.matcher(answer);
 		
