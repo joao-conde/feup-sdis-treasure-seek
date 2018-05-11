@@ -16,4 +16,5 @@ public interface DBOperations extends Remote {
 	ArrayList<Treasure> getAllTreasures() throws RemoteException, SQLException;
 	ArrayList<Treasure> getAllTreasuresWithFoundInfo() throws RemoteException, SQLException;
 	boolean validateTreasure(int treasureId, String answer) throws RemoteException, SQLException;
+	boolean insertFoundTreasure(int treasureId, long userId) throws RemoteException, SQLException;
 }

@@ -340,4 +340,18 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		return matcher.matches();
 	}
 
+	@Override
+	public boolean insertFoundTreasure(int treasureId, long userId) throws RemoteException, SQLException {
+		
+		PreparedStatement stmt = connection
+				.prepareStatement("INSERT INTO user_treasure (userId, treasureId) VALUES (?, ?)");
+		
+		stmt.setLong(1, userId);
+		stmt.setInt(2, treasureId);
+		
+		stmt.executeUpdate();
+		
+		return true;
+	}
+
 }

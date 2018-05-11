@@ -16,5 +16,7 @@
     <string name="title_activity_treasure_map">Map</string>
     <string name="dialogTreasureQuestion">Enter Treasure Solution To Conquer It</string>
     <string name="send_treasure_answer">Send My Answer</string>
-    <string name="answer_title">Answer</string>
+    <string name="answer_title">Enter Treasure Challenge Answer</string>
+    <string name="treasure_map">Treasure Map</string>
+    <string name="found_treasure">Found Treasure ?</string>
 </resources>

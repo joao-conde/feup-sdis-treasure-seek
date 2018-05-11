@@ -73,11 +73,12 @@ public class Controller {
 
     }
 
-    private String buildLoginMessage(AccessToken token) {
+    private String buildLoginMessage() {
 
         JSONObject json = new JSONObject();
+        String token = AccessToken.getCurrentAccessToken().getToken();
         try {
-            json.put("token", token.getToken());
+            json.put("token", token);
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -86,11 +87,12 @@ public class Controller {
 
     }
 
-    private String buildLogoutMessage(AccessToken token, long id, String name) {
+    private String buildLogoutMessage(long id, String name) {
 
         JSONObject json = new JSONObject();
+        String token = (String)loggedUser.getValue("token");
         try {
-            json.put("token", token.getToken());
+            json.put("token", token);
             json.put( "id", id);
             json.put("name", name);
 
@@ -102,12 +104,32 @@ public class Controller {
 
     }
 
-    
-    public  Pair<String, Integer> getAvailableServer(String loadBalancerHostAddress) throws IOException, JSONException, ParseMessageException, NoAvailableServer {
+    private String buildFoundTreasureMessage(int treasureIndex, String answer) {
+
+        JSONObject json = new JSONObject();
+        String token = (String)loggedUser.getValue("token");
+        Treasure treasure = treasures.get(treasureIndex);
+        try {
+            json.put("token", token);
+            json.put( "userId", loggedUser.getValue("id"));
+            json.put("name", loggedUser.getValue("name"));
+            json.put( "treasureId", treasure.getValue("id"));
+            json.put("answer", answer);
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        return  ClientMessage.buildRequestMessage(ClientMessage.MessageType.CREATE, Model.ModelType.FOUND_TREASURE.getResourceName() ,json);
+
+
+    }
+
+    public boolean getAvailableServer() throws IOException, JSONException, ParseMessageException, NoAvailableServer {
 
         Pair<String,Integer> result;
 
-        ServerMessage reply = connectionHelper.sendMessage(ClientMessage.MessageType.RETRIEVE_HOST.description, loadBalancerHostAddress, LOAD_BALANCER_PORT);
+        ServerMessage reply = connectionHelper.sendMessage(ClientMessage.MessageType.RETRIEVE_HOST.description, loadBalancerAddress, LOAD_BALANCER_PORT);
 
         if(reply.getStatus() == ServerMessage.ReplyMessageStatus.BAD_REQUEST)
             throw new NoAvailableServer();
@@ -119,30 +141,55 @@ public class Controller {
         this.currentAppServerAddress = result.first;
         this.currentAppServerPort = result.second;
 
-        return result;
+        return true;
 
     }
 
 
-    public ServerMessage loginToTreasureSeek(String serverAddress, int serverPort) throws IOException, ParseMessageException, JSONException {
+    public boolean loginToTreasureSeek() throws IOException, ParseMessageException, JSONException {
 
-        AccessToken token = AccessToken.getCurrentAccessToken();
-        return connectionHelper.sendMessageOverSSL(buildLoginMessage(token), serverAddress, serverPort);
+        ServerMessage reply =  connectionHelper.sendMessageOverSSL(buildLoginMessage(), currentAppServerAddress, currentAppServerPort);
+
+        if(reply != null && reply.getStatus() == ServerMessage.ReplyMessageStatus.OK) {
+
+            JSONObject user = (JSONObject) reply.getBody().get(0);
+            JSONArray treasures = (JSONArray) reply.getBody().get(1);
+            setTreasures(treasures);
+            saveSession(user);
+            return true;
+
+        }
+
+        return false;
 
     }
 
-    public ServerMessage logoutFromTreasureSeek(String serverAddress, int serverPort) throws IOException, ParseMessageException, JSONException {
+    public boolean logoutFromTreasureSeek() throws IOException, ParseMessageException, JSONException {
 
-        AccessToken token = AccessToken.getCurrentAccessToken();
         String userName = (String)loggedUser.getValue("name");
         long id = (Long)loggedUser.getValue("id");
 
-        return connectionHelper.sendMessageOverSSL(buildLogoutMessage(token, id, userName), serverAddress, serverPort);
+        ServerMessage reply =  connectionHelper.sendMessageOverSSL(buildLogoutMessage(id, userName), currentAppServerAddress, currentAppServerPort);
+
+        if(reply != null && reply.getStatus() == ServerMessage.ReplyMessageStatus.OK) {
+            deleteSession();
+            return true;
+        }
+
+        return false;
 
     }
 
-    public ArrayList<Treasure> getAllTresoures() {
+    public boolean sendFoundTreasure(int treasureIndex, String answer) throws JSONException, ParseMessageException, IOException {
 
+        ServerMessage reply = connectionHelper.sendMessageOverSSL(buildFoundTreasureMessage(treasureIndex,answer), currentAppServerAddress, currentAppServerPort);
+
+        return (reply != null && reply.getStatus() == ServerMessage.ReplyMessageStatus.OK);
+
+
+    }
+
+    public ArrayList<Treasure> getAllTreasures() {
 
         return treasures;
 
