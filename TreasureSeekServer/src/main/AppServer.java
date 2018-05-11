@@ -62,21 +62,25 @@ public class AppServer {
 	// private static String[] dbServerIPs;
 
 	private ExecutorService threadPool = Executors.newFixedThreadPool(20);
-	public int serverClientPort;
 
 	private UserController userController;
 	private DBOperations dbOperations;
 
-	private String dbServerHostAddres;
 	private String lbHostAddress;
+	private String appServerHost;
+	public int clientServerPort;
+	private String dbServerHostAddress;
 
 	public static void main(String[] args)
-			throws InterruptedException, NotBoundException, ExecutionException, TimeoutException {
-
+			throws InterruptedException, ExecutionException, TimeoutException, RemoteException {
+				
 		String loadBalancerHost = args[0];
-		int clientServerPort = Integer.parseInt(args[1]);
+		String appServerHost = args[1].substring(0, args[1].indexOf(":"));
+		int clientServerPort = Integer.parseInt(args[1].substring(args[1].indexOf(":") + 1));
+		String dbManagerHost = args[2];
+		
 
-		AppServer appServer = new AppServer(loadBalancerHost, clientServerPort);
+		AppServer appServer = new AppServer(loadBalancerHost, appServerHost, clientServerPort, dbManagerHost);
 
 		Runtime.getRuntime().addShutdownHook(new Thread(new AppServer.CloseAppServer(appServer)));
 
@@ -84,78 +88,37 @@ public class AppServer {
 
 	}
 
-	private DBOperations getDBOperations() throws RemoteException, NotBoundException, UnknownHostException {
-
-		Registry registry = LocateRegistry.getRegistry(InetAddress.getLocalHost().getHostName(), REGISTRY_PORT,
-				new SslRMIClientSocketFactory());
-
-		// randomly selects one of the available DB's
-		String[] boundNames = registry.list();
-		int idx = new Random().nextInt(boundNames.length);
-
-		dbOperations = (DBOperations) registry.lookup(boundNames[idx]);
-
-		return dbOperations;
-	}
-
-	public void switchDB() throws RemoteException, NotBoundException {
-		
-		try {
-			this.dbOperations = getDBOperations();
-			this.userController = new UserController(dbOperations);
-		} catch (UnknownHostException e) {
-
-			System.out.println("App Server could not connect to DB Server on host " + dbServerHostAddres
-					+ ":" + REGISTRY_PORT);
-			System.exit(1);
-
-		}
-	}
-
-	public AppServer(String loadBalancerHost, int serverClientPort) throws InterruptedException {
+	public AppServer(String loadBalancerHost, String appServerHost, int clientServerPort, String dbManagerHost) throws InterruptedException, RemoteException {
 
 		Utils.setSecurityProperties();
 
-		this.serverClientPort = serverClientPort;
 		this.lbHostAddress = loadBalancerHost;
+		this.appServerHost = appServerHost;
+		this.clientServerPort = clientServerPort;
+		this.dbServerHostAddress = dbManagerHost;
+
+		Registry registry = LocateRegistry.getRegistry(this.dbServerHostAddress, REGISTRY_PORT,
+				new SslRMIClientSocketFactory());
 
 		try {
-			this.dbServerHostAddres = InetAddress.getLocalHost().getHostAddress();
-		} catch (UnknownHostException e1) {
-			System.out.println(e1.getLocalizedMessage());
-		}
-
-		try {
-			this.dbOperations = getDBOperations();
-
-		} catch (UnknownHostException e) {
-
-			System.out.println(
-					"App Server could not connect to DB Server on host " + dbServerHostAddres + ":" + REGISTRY_PORT);
-			System.exit(1);
-
-		}
-
-		catch (IOException e) {
-
-			System.out.println(
-					"App Server could not connect to DB Server on host " + dbServerHostAddres + ":" + REGISTRY_PORT);
+			this.dbOperations = (DBOperations) registry.lookup("db_manager");
+			this.userController = new UserController(dbOperations);
+		} 
+		catch (NotBoundException e1) {
+			System.err.println("DB Manager doesn't exist");
 			System.exit(1);
 		}
 
-		catch (NotBoundException e) {
-
-			System.out.println("App Server could not connect to remote rmi object");
-			System.exit(1);
-		}
 
 		try {
-			announceToLB(loadBalancerHost);
-		} catch (SSLHandshakeException e) {
+			announceToLB();
+		} 
+		catch (SSLHandshakeException e) {
 			System.out.println("App Server could not perform SSL handshake with Load Balancer on host " + lbHostAddress
 					+ ":" + LoadBalancer.SERVER_PORT);
 			System.exit(1);
-		} catch (IOException | ParseMessageException | DuplicatedAppServer | NonExistentAppServer | JSONException e) {
+		} 
+		catch (IOException | ParseMessageException | DuplicatedAppServer | NonExistentAppServer | JSONException e) {
 			System.out.println("App Server could not connect to Load Balancer on host " + lbHostAddress + ":"
 					+ LoadBalancer.SERVER_PORT);
 			System.exit(1);
@@ -165,14 +128,14 @@ public class AppServer {
 
 	}
 
-	private void receiveCalls() throws NotBoundException, InterruptedException, ExecutionException, TimeoutException {
+	private void receiveCalls() throws InterruptedException, ExecutionException, TimeoutException {
 
 		SSLServerSocket serverSocket = null;
 		SSLServerSocketFactory factory = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
 
 		try {
 
-			serverSocket = (SSLServerSocket) factory.createServerSocket(serverClientPort);
+			serverSocket = (SSLServerSocket) factory.createServerSocket(clientServerPort);
 			serverSocket.setNeedClientAuth(false);
 			serverSocket.setEnabledProtocols(ENC_PROTOCOLS);
 			serverSocket.setEnabledCipherSuites(serverSocket.getSupportedCipherSuites());
@@ -182,8 +145,6 @@ public class AppServer {
 				try {
 
 					SSLSocket socket = (SSLSocket) serverSocket.accept();
-
-					switchDB();
 
 					handleRequest(socket);
 
@@ -203,23 +164,22 @@ public class AppServer {
 
 	}
 
-	public void handleRequest(SSLSocket socket) throws InterruptedException, ExecutionException, RemoteException, NotBoundException {
+	public void handleRequest(SSLSocket socket) throws InterruptedException, ExecutionException {
 
 		HandleClientRequest callable = new HandleClientRequest(socket);
 
-		@SuppressWarnings("unchecked")
 		Future<String> handler = threadPool.submit(callable);
 
 		try {
-			handler.get(Duration.ofSeconds(TIME_OUT/TO_MILLIS).toMillis(), TimeUnit.MILLISECONDS);
+			handler.get(TIME_OUT, TimeUnit.MILLISECONDS);
 		} catch (TimeoutException e) {
+			System.out.println("TimeOutException handling the request");
 			handler.cancel(true);
-			switchDB();
 			handleRequest(socket);
 		}
 	}
 
-	class HandleClientRequest implements Callable {
+	class HandleClientRequest implements Callable<String> {
 
 		SSLSocket socket;
 
@@ -322,14 +282,14 @@ public class AppServer {
 
 	}
 
-	public void announceToLB(String loadBalancerHost)
+	public void announceToLB()
 			throws UnknownHostException, IOException, SSLHandshakeException, InterruptedException,
 			SocketTimeoutException, ParseMessageException, JSONException, DuplicatedAppServer, NonExistentAppServer {
 
 		SSLSocket socket = null;
 		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
 
-		socket = (SSLSocket) factory.createSocket(InetAddress.getByName(loadBalancerHost), LoadBalancer.SERVER_PORT);
+		socket = (SSLSocket) factory.createSocket(InetAddress.getByName(this.lbHostAddress), LoadBalancer.SERVER_PORT);
 		socket.setEnabledProtocols(ENC_PROTOCOLS);
 		socket.setEnabledCipherSuites(socket.getSupportedCipherSuites());
 
@@ -340,8 +300,8 @@ public class AppServer {
 
 		JSONObject body = new JSONObject();
 		try {
-			body.put("host", socket.getLocalAddress().getHostAddress());
-			body.put("port", this.serverClientPort);
+			body.put("host", this.appServerHost);
+			body.put("port", this.clientServerPort);
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
@@ -366,7 +326,7 @@ public class AppServer {
 
 	}
 
-	public void kill(String loadBalancerHost) throws IOException {
+	public void kill() throws IOException {
 
 		SSLSocket socket = null;
 		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
@@ -375,7 +335,7 @@ public class AppServer {
 		socket.setEnabledProtocols(ENC_PROTOCOLS);
 		socket.setEnabledCipherSuites(socket.getSupportedCipherSuites());
 
-		SocketAddress socketAddr = new InetSocketAddress(InetAddress.getByName(loadBalancerHost),
+		SocketAddress socketAddr = new InetSocketAddress(InetAddress.getByName(this.lbHostAddress),
 				LoadBalancer.SERVER_PORT);
 		socket.connect(socketAddr, TIME_OUT);
 
@@ -386,8 +346,8 @@ public class AppServer {
 
 		JSONObject body = new JSONObject();
 		try {
-			body.put("host", socket.getLocalAddress().getHostAddress());
-			body.put("port", this.serverClientPort);
+			body.put("host", this.appServerHost);
+			body.put("port", this.clientServerPort);
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
@@ -408,7 +368,7 @@ public class AppServer {
 
 		public void run() {
 			try {
-				appServer.kill(appServer.lbHostAddress);
+				appServer.kill();
 			} catch (SSLHandshakeException e) {
 				System.out.println("App Server could not perform SSL handshake with Load Balancer on host "
 						+ appServer.lbHostAddress + ":" + LoadBalancer.SERVER_PORT);

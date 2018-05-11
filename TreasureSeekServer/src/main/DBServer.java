@@ -1,6 +1,7 @@
 package main;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.rmi.AccessException;
@@ -26,12 +27,9 @@ import javax.rmi.ssl.SslRMIServerSocketFactory;
 
 import model.Treasure;
 import model.User;
+import util.DBManagerAlreadyExistsException;
 import util.Utils;
 
-/**
- * @author jotac
- *
- */
 public class DBServer extends UnicastRemoteObject implements DBOperations {
 
 	private static final long serialVersionUID = 1L;
@@ -40,47 +38,46 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 
 	private static final String DB_PATH = "../db/";
 	
-    private static final int REGISTRY_PORT = 1099;
     private static final String RMI_PREFIX = "db_";
 
     private String DBNAME;
     private String DBURL;
     public int dbNo;
-    public String host;
     
     private Registry registry;
     private Connection connection;
     
+    private DBManagerOperations dbManagerRemoteObj;
    
     
-    protected DBServer(String host) throws Exception {
+    protected DBServer(String dbManagerAddress) throws Exception {
 		super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
 		
-		this.host = host;
-    	System.out.println("registry loaded from " + host);
 		registry = LocateRegistry.getRegistry(
-				host, REGISTRY_PORT,
-				new SslRMIClientSocketFactory());		
+				dbManagerAddress, Registry.REGISTRY_PORT,
+				new SslRMIClientSocketFactory());
+		System.out.println("dbManager registry loaded");
 		
-		dbNo = 1;
-		while (true) {
-			try {
+		dbManagerRemoteObj = (DBManagerOperations) registry.lookup("db_manager");
 
-				registry.bind(RMI_PREFIX + dbNo, this);
-				System.out.println("obj bound: " + RMI_PREFIX + dbNo);
-				break;
-			} catch (AlreadyBoundException e) {
-				System.out.println("obj already bound: " + RMI_PREFIX + dbNo);
-				dbNo++;
-			}
-			catch(RemoteException e) {
-	            registry = LocateRegistry.createRegistry(REGISTRY_PORT,
-	    	            new SslRMIClientSocketFactory(),
-	    	            new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, true));
-	        	System.out.println("registry created.");
-			}
-		}
+		dbNo = dbManagerRemoteObj.newDBServer(this);
+		
+		System.out.println("dbServer created, No: " + dbNo);
 
+		createConnection();
+	}
+
+	public static void main(String[] args) throws Exception {
+		
+		Utils.setSecurityProperties();  
+		
+		String dbManagerAddress = args[0];
+		DBServer dbServer = new DBServer(dbManagerAddress);	
+	
+		Runtime.getRuntime().addShutdownHook(new Thread(new DBServer.CloseDBServer(dbServer)));
+	}	
+	
+	private void createConnection() throws SQLException, FileNotFoundException {
 		DBNAME = "treasureSeekDB" + dbNo + ".db";
 		DBURL = "jdbc:sqlite:../db/" + DBNAME;
 
@@ -102,35 +99,20 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			st.executeUpdate(schema);
 			st.close();
 
-		}
-
+		}		
 	}
 
-	public static void main(String[] args) throws Exception {
-		
-		Utils.setSecurityProperties();  
-		
-		String host = args[0];
-		
-		DBServer dbServer = new DBServer(host);		
-	
-		Runtime.getRuntime().addShutdownHook(new Thread(new DBServer.CloseDBServer(dbServer)));
-	}	
-	
 	static class CloseDBServer implements Runnable{
-		DBServer dbDerver;
+		DBServer dbServer;
 	
-		public CloseDBServer(DBServer dbDerver) {
-			this.dbDerver = dbDerver;
+		public CloseDBServer(DBServer dbServer) {
+			this.dbServer = dbServer;
 		}
 
 		public void run() {
 			try {
-				Registry registry = LocateRegistry.getRegistry(
-						dbDerver.host, REGISTRY_PORT,
-		                new SslRMIClientSocketFactory());
-				registry.unbind(RMI_PREFIX + dbDerver.dbNo);
-			} catch (RemoteException | NotBoundException e) {
+				dbServer.dbManagerRemoteObj.removeDBServer(dbServer.dbNo);
+			} catch (RemoteException e) {
 				e.printStackTrace();
 			}
 		};
