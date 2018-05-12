@@ -19,6 +19,7 @@ import java.util.Scanner;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import javax.rmi.ssl.SslRMIServerSocketFactory;
 
+import util.Utils.Pair;
 import model.Treasure;
 import model.User;
 import util.Utils;
@@ -264,7 +265,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	}
 
 	@Override
-	public ArrayList<Treasure> getAllTreasuresWithFoundInfo() throws RemoteException, SQLException {
+	public Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasuresWithFoundInfo(long userId) throws RemoteException, SQLException {
 		
 		PreparedStatement stmt = connection.prepareStatement(
 			"SELECT * FROM (" +
@@ -282,24 +283,27 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			");"
         );
 		
-		ResultSet result = stmt.executeQuery();
+		ResultSet resultSet = stmt.executeQuery();
 		ArrayList<Treasure> treasures = new ArrayList<>();
-		
-		while(result.next()) {
+		ArrayList<Treasure> foundTreasures = new ArrayList<>();
+			
+		while(resultSet.next()) {
 			
 			Treasure treasure = new Treasure();
-			treasure.setValue("id", result.getInt(1));
-			treasure.setValue("latitude", result.getDouble(2));
-			treasure.setValue("longitude", result.getDouble(3));
-			treasure.setValue("description", result.getString(4));
-			treasure.setValue("found", result.getInt(5));
-			treasures.add(treasure);
+			treasure.setValue("id", resultSet.getInt(1));
+			treasure.setValue("latitude", resultSet.getDouble(2));
+			treasure.setValue("longitude", resultSet.getDouble(3));
+			treasure.setValue("description", resultSet.getString(4));
+			treasure.setValue("found", resultSet.getInt(5));
 			
+			if(resultSet.getBoolean(5))
+				foundTreasures.add(treasure);
+			else
+				treasures.add(treasure);
 		}
 		
-					
-		return treasures;
-		
+		Pair<ArrayList<Treasure>,ArrayList<Treasure>> result = new Pair<>(treasures,foundTreasures);					
+		return result;
 		
 	}
 

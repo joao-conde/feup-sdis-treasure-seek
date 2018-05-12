@@ -15,6 +15,7 @@ import org.json.JSONObject;
 import main.DBOperations;
 import model.Treasure;
 import model.User;
+import util.Utils.Pair;
 
 public class UserController {
 	
@@ -118,10 +119,10 @@ public class UserController {
 				
 	}
 	
-	public ArrayList<Treasure> getAllTreasures() {
+	public Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasures(long userId) {
 		
 		try {
-			return dbOperations.getAllTreasures();
+			return dbOperations.getAllTreasuresWithFoundInfo(userId);
 		}
 		catch(RemoteException | SQLException e) {
 			return null;

@@ -13,12 +13,10 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.time.Duration;
 
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 
 import java.util.ArrayList;
-import java.util.Random;
 import java.util.Scanner;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -50,6 +48,7 @@ import util.DuplicatedAppServer;
 import util.NonExistentAppServer;
 import util.ParseMessageException;
 import util.Utils;
+import util.Utils.Pair;
 
 public class AppServer {
 
@@ -58,7 +57,7 @@ public class AppServer {
 
 	private static final int REGISTRY_PORT = 1099;
 	private static final int TIME_OUT = 2000;
-	private static final int TO_MILLIS = 1000;
+	//private static final int TO_MILLIS = 1000;
 
 	// private static String[] dbServerIPs;
 
@@ -233,20 +232,21 @@ public class AppServer {
 
 				if (user != null) {
 
-					JSONArray body = new JSONArray();
+					Pair<ArrayList<Treasure>,ArrayList<Treasure>> allTreasures = userController.getAllTreasures((long)user.getValue("id"));
+					user.setValue("foundTreasures", allTreasures.value);
 
+					JSONArray body = new JSONArray();
+					
 					JSONObject userJson = user.toJSON();
 					body.put(userJson);
 
 					System.out.println("User " + (String) user.getValue("name") + " logged in");
 
-					ArrayList<Treasure> allTreasures = userController.getAllTreasures();
+					
 					JSONArray allTreasuresJSONArray = new JSONArray();
 
-					for (Treasure treasure : allTreasures) {
-
+					for (Treasure treasure : allTreasures.key) {
 						allTreasuresJSONArray.put(treasure.toJSON());
-
 					}
 
 					body.put(allTreasuresJSONArray);

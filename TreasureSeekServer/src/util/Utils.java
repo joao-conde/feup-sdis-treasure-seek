@@ -1,12 +1,14 @@
 package util;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 
 public class Utils {
 
-	public static class Pair<K, V> {
+	public static class Pair<K, V> implements Serializable {
 
+		private static final long serialVersionUID = -4589969236014340084L;
 		public K key;
 		public V value;
 

@@ -19,6 +19,7 @@ import model.Treasure;
 import model.User;
 import util.DBManagerAlreadyExistsException;
 import util.Utils;
+import util.Utils.Pair;
 
 public class DBManager extends UnicastRemoteObject implements DBManagerOperations  {
 	
@@ -139,12 +140,12 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 		
 	}
 	@Override
-	public ArrayList<Treasure> getAllTreasuresWithFoundInfo() throws RemoteException, SQLException {
+	public Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasuresWithFoundInfo(long userId) throws RemoteException, SQLException {
 		String db = pickRandomDB();
 
 		try {
 			DBOperations dbOperations = (DBOperations) registry.lookup(db);
-			return dbOperations.getAllTreasuresWithFoundInfo();
+			return dbOperations.getAllTreasuresWithFoundInfo(userId);
 		} catch (NotBoundException e) {
 			e.printStackTrace();
 		}
