@@ -13,12 +13,10 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.time.Duration;
 
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 
 import java.util.ArrayList;
-import java.util.Random;
 import java.util.Scanner;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -58,7 +56,7 @@ public class AppServer {
 
 	private static final int REGISTRY_PORT = 1099;
 	private static final int TIME_OUT = 2000;
-	private static final int TO_MILLIS = 1000;
+	//private static final int TO_MILLIS = 1000;
 
 	// private static String[] dbServerIPs;
 
