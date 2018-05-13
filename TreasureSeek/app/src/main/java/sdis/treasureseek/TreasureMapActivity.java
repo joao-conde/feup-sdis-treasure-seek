@@ -22,6 +22,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -42,7 +43,8 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
     private LocationRequest locationRequest;
     LocationCallback locationCallback;
 
-    private ArrayList<Marker> treasureMarkers = new ArrayList<>();
+    private ArrayList<Marker> treasureMarkers;
+    private ArrayList<Marker> foundTreasuresMarkers;
 
 
     @Override
@@ -121,6 +123,10 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
 
     private void drawTreasures() {
 
+        treasureMarkers = new ArrayList<>();
+        foundTreasuresMarkers = new ArrayList<>();
+
+
         for (Treasure treasure : controller.getAllTreasures()) {
 
             LatLng pos = new LatLng((double) treasure.getValue("latitude"), (double) treasure.getValue("longitude"));
@@ -130,6 +136,16 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
 
             mMap.setOnMarkerClickListener(new MarkerListener());
 
+        }
+
+        for(Treasure treasure : (ArrayList<Treasure>)controller.getLoggedUser().getValue("foundTreasures")) {
+
+            LatLng pos = new LatLng((double) treasure.getValue("latitude"), (double) treasure.getValue("longitude"));
+            Marker marker = mMap.addMarker(new MarkerOptions().position(pos).title((String) treasure.getValue("description")).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+
+            foundTreasuresMarkers.add(marker);
+
+            mMap.setOnMarkerClickListener(new MarkerListener());
 
         }
 
@@ -158,13 +174,15 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
 
     class LocationCallBackClass extends LocationCallback {
 
+        @SuppressLint("MissingPermission")
         @Override
         public void onLocationResult(LocationResult locationResult) {
 
             List<Location> locationList = locationResult.getLocations();
             if (locationList.size() > 0) {
                 //The last location in the list is the newest
-                Location location = locationList.get(locationList.size() - 1);
+                mMap.setMyLocationEnabled(true);
+                //Location location = locationList.get(locationList.size() - 1);
 
                 //move map camera
                 //mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(),location.getLongitude()), 17));
@@ -180,10 +198,14 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
         @Override
         public boolean onMarkerClick(Marker marker) {
 
-            int index = treasureMarkers.indexOf(marker);
+            int treasureIndex = treasureMarkers.indexOf(marker);
+            int foundIndex = foundTreasuresMarkers.indexOf(marker);
+
+            int index = treasureIndex != -1 ? treasureIndex : foundIndex;
 
             Intent intent = new Intent(TreasureMapActivity.this, TreasureActivity.class);
             intent.putExtra("treasureIndex", index);
+            intent.putExtra("found", treasureIndex == -1);
             startActivity(intent);
 
             return false;
@@ -193,6 +215,10 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
     }
 
 
-
-
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        mMap.clear();
+        drawTreasures();
+    }
 }

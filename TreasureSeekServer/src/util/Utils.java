@@ -32,12 +32,16 @@ public class Utils {
 
 	}
 
-	public static void setSecurityProperties() {
+	public static void setSecurityProperties(boolean debugEclipse) {
+		
+		String keyStorePath = debugEclipse ? "security/keys/keystore" : "../security/keys/keystore";
+		String trustStorePath = debugEclipse ? "security/certificates/truststore" : "../security/certificates/truststore";
+		
 		String password = "123456";
-		System.setProperty("javax.net.ssl.keyStore", "../security/keys/keystore");
+		System.setProperty("javax.net.ssl.keyStore", keyStorePath);
 		System.setProperty("javax.net.ssl.keyStorePassword", password);
 
-		System.setProperty("javax.net.ssl.trustStore", "../security/certificates/truststore");
+		System.setProperty("javax.net.ssl.trustStore", trustStorePath);
 		System.setProperty("javax.net.ssl.trustStorePassword", password);
 
 	}

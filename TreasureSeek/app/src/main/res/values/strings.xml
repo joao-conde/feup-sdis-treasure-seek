@@ -19,4 +19,6 @@
     <string name="answer_title">Enter Treasure Challenge Answer</string>
     <string name="treasure_map">Treasure Map</string>
     <string name="found_treasure">Found Treasure ?</string>
+    <string name="correctAnswer">Congratulations! You have found this treasure!!</string>
+    <string name="wrongAnswer">Ouch! Wrong Answer, Please Try Again!!</string>
 </resources>

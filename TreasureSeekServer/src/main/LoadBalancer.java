@@ -44,7 +44,7 @@ public class LoadBalancer {
 
 	public static void main(String[] args) throws IOException, ParseMessageException, JSONException {
 		System.out.println("---Load Balancer---");
-		Utils.setSecurityProperties();
+		Utils.setSecurityProperties(false);
 		new LoadBalancer();
 	}
 

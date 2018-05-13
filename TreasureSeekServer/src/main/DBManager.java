@@ -49,7 +49,7 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 	}
 	
 	public static void main(String[] args) {
-		Utils.setSecurityProperties();  
+		Utils.setSecurityProperties(false);  
 
 		try {
 			new DBManager();
@@ -186,15 +186,16 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 	}
 
 	@Override
-	public boolean validateTreasure(int treasureId, String answer) throws RemoteException, SQLException {
-		boolean result = true;
+	public Treasure getTreasure(int treasureId) throws RemoteException, SQLException {
+		
+		Treasure result = null;
 		
 		for (String db : registry.list()) {
 			if(db.equals("db_manager")) continue;
 			
 			try {
 				DBOperations dbOperations = (DBOperations) registry.lookup(db);
-				result = result && dbOperations.validateTreasure(treasureId, answer);
+				result = dbOperations.getTreasure(treasureId);
 			} catch (NotBoundException e) {
 				e.printStackTrace();
 			}

@@ -58,18 +58,24 @@ public class Controller {
         this.preferences = context.getSharedPreferences(context.getString(R.string.treasureSeekPreferences), Context.MODE_PRIVATE);
         this.connectionHelper = new ConnectionHelper(context);
 
-        if(isLogged())
-            this.setLoggedUser();
-
     }
 
-    private void setLoggedUser() {
+    private void setLoggedUser(JSONObject user) throws JSONException {
 
         long id = preferences.getLong(context.getString(R.string.userId), 0);
         String name = preferences.getString(context.getString(R.string.nameOfUser), "");
         String email = preferences.getString(context.getString(R.string.email), "");
         boolean admin = preferences.getBoolean(context.getString(R.string.isAdmin), false);
-        loggedUser = new User(id,name,email,AccessToken.getCurrentAccessToken().getToken(),admin);
+
+        JSONArray foundTreasuresJSON = user.getJSONArray("foundTreasures");
+        ArrayList<Treasure> foundTreasures = new ArrayList<>();
+        for(int i = 0; i < foundTreasuresJSON.length(); i++) {
+
+            foundTreasures.add(new Treasure((JSONObject) foundTreasuresJSON.get(i)));
+
+        }
+
+        loggedUser = new User(id,name,email,AccessToken.getCurrentAccessToken().getToken(),admin, foundTreasures);
 
     }
 
@@ -184,7 +190,21 @@ public class Controller {
 
         ServerMessage reply = connectionHelper.sendMessageOverSSL(buildFoundTreasureMessage(treasureIndex,answer), currentAppServerAddress, currentAppServerPort);
 
-        return (reply != null && reply.getStatus() == ServerMessage.ReplyMessageStatus.OK);
+        if(reply == null || reply.getStatus() != ServerMessage.ReplyMessageStatus.OK)
+            return false;
+
+        JSONObject response = reply.getBody().getJSONObject(0);
+
+        if(response.getBoolean("result")) {
+
+            int id = response.getInt("id");
+            String challenge = response.getString("challenge");
+            String challengeAnswer = response.getString("answer");
+            return saveFoundTreasure(id,challenge,challengeAnswer);
+
+        }
+
+        return false;
 
 
     }
@@ -204,9 +224,10 @@ public class Controller {
         editor.putString(context.getString(R.string.email), user.getString("email"));
         editor.putLong(context.getString(R.string.userId), user.getLong("id"));
         editor.putBoolean(context.getString(R.string.isAdmin), user.getBoolean("admin"));
+
         editor.commit();
 
-        setLoggedUser();
+        setLoggedUser(user);
 
     }
 
@@ -241,7 +262,8 @@ public class Controller {
 
         for(int i = 0; i < array.length(); i++) {
 
-            this.treasures.add(new Treasure((JSONObject) array.get(i)));
+            JSONObject treasure = (JSONObject) array.get(i);
+            this.treasures.add(new Treasure(treasure));
 
         }
 
@@ -250,4 +272,36 @@ public class Controller {
     public void setLoadBalancerAddress(String loadBalancerAddress) {
         this.loadBalancerAddress = loadBalancerAddress;
     }
+
+    public boolean saveFoundTreasure(int treasureId, String challenge, String answer) {
+
+        int foundTreasureIndex = -1;
+        Treasure foundTreasure = null;
+
+        for(int i = 0; i < treasures.size(); i++) {
+
+            Treasure treasure = treasures.get(i);
+
+            if((int)treasure.getValue("id") == treasureId) {
+
+                foundTreasureIndex = i;
+                foundTreasure = treasure;
+                break;
+
+            }
+
+        }
+
+        if(foundTreasureIndex == -1)
+            return false;
+
+        treasures.remove(foundTreasureIndex);
+
+        foundTreasure.setValue("challenge",challenge);
+        foundTreasure.setValue("answer",answer);
+
+        return ((ArrayList<Treasure>) loggedUser.getValue("foundTreasures")).add(foundTreasure);
+
+    }
+
 }

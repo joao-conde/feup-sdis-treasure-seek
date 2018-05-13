@@ -9,12 +9,16 @@ import java.rmi.RemoteException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.json.JSONObject;
 
 import main.DBOperations;
 import model.Treasure;
 import model.User;
+import util.NotAuthorizedException;
+import util.ResourceNotFoundException;
 import util.Utils.Pair;
 
 public class UserController {
@@ -125,40 +129,42 @@ public class UserController {
 			return dbOperations.getAllTreasuresWithFoundInfo(userId);
 		}
 		catch(RemoteException | SQLException e) {
+			System.out.println(e.getLocalizedMessage());
 			return null;
 		}
 	}
 	
-	public boolean validateTreasure(int treasureId, String answer, String token, long userId) {
+	public Pair<Boolean,Treasure> validateTreasure(int treasureId, String answer, String token, long userId) throws ResourceNotFoundException, NotAuthorizedException, RemoteException, SQLException {
 		
-		try {
 			
 			User user = dbOperations.getUser(true, userId);
 			
 			if(user == null)
-				return false;
+				throw new ResourceNotFoundException();
 			
 						
 			if(!token.equals(user.getValue("token")))
-				return false;
+				throw new NotAuthorizedException();
 			
-			boolean isCorrectAnswer = dbOperations.validateTreasure(treasureId, answer);
+			Treasure treasure = dbOperations.getTreasure(treasureId);
 			
+			if(treasure == null)
+				throw new ResourceNotFoundException();
 			
+			String correctAnswer = (String)treasure.getValue("answer");
+			
+			String regex = ".*" + correctAnswer + ".*"; 
+			Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+			Matcher matcher = pattern.matcher(answer);
+			
+			boolean isCorrectAnswer = matcher.matches(); 
 			
 			if(!isCorrectAnswer)
-				return false;
+				return new Pair<Boolean,Treasure>(false,treasure);
 						
-			return dbOperations.insertFoundTreasure(treasureId, userId);
+			return new Pair<Boolean,Treasure>(dbOperations.insertFoundTreasure(treasureId, userId), treasure);
 			
 			
-			
-		} catch (RemoteException | SQLException e) {
-			
-			return false;
-		}
-		
-		
 		
 	}
 	

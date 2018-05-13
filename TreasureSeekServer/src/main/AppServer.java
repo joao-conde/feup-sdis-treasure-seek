@@ -13,6 +13,7 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.sql.SQLException;
 
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 
@@ -46,7 +47,9 @@ import model.Treasure;
 import model.User;
 import util.DuplicatedAppServer;
 import util.NonExistentAppServer;
+import util.NotAuthorizedException;
 import util.ParseMessageException;
+import util.ResourceNotFoundException;
 import util.Utils;
 import util.Utils.Pair;
 
@@ -61,7 +64,7 @@ public class AppServer {
 
 	// private static String[] dbServerIPs;
 
-	private ExecutorService threadPool = Executors.newFixedThreadPool(20);
+	private ExecutorService threadPool = Executors.newFixedThreadPool(100);
 
 	private UserController userController;
 	private DBOperations dbOperations;
@@ -90,7 +93,7 @@ public class AppServer {
 
 	public AppServer(String loadBalancerHost, String appServerHost, int clientServerPort, String dbManagerHost) throws InterruptedException, RemoteException {
 
-		Utils.setSecurityProperties();
+		Utils.setSecurityProperties(false);
 
 		this.lbHostAddress = loadBalancerHost;
 		this.appServerHost = appServerHost;
@@ -164,19 +167,25 @@ public class AppServer {
 
 	}
 
-	public void handleRequest(SSLSocket socket) throws InterruptedException, ExecutionException {
+	public void handleRequest(SSLSocket socket) throws InterruptedException, ExecutionException, IOException {
 
 		HandleClientRequest callable = new HandleClientRequest(socket);
 
 		Future<String> handler = threadPool.submit(callable);
 
+		
 		try {
 			handler.get(TIME_OUT, TimeUnit.MILLISECONDS);
 		} catch (TimeoutException e) {
 			System.out.println("TimeOutException handling the request");
 			handler.cancel(true);
-			handleRequest(socket);
+			
+			PrintWriter pw = new PrintWriter(socket.getOutputStream());
+			pw.write(ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST));
+			pw.close();
+			
 		}
+		
 	}
 
 	class HandleClientRequest implements Callable<String> {
@@ -231,9 +240,16 @@ public class AppServer {
 				User user = userController.loginUser(receivedMessage.getBody().getString("token"));
 
 				if (user != null) {
-
+					
 					Pair<ArrayList<Treasure>,ArrayList<Treasure>> allTreasures = userController.getAllTreasures((long)user.getValue("id"));
-					user.setValue("foundTreasures", allTreasures.value);
+					
+					JSONArray foundTreasuresJSON = new JSONArray();
+					
+					for (Treasure treasure : allTreasures.value) {
+						foundTreasuresJSON.put(treasure.toJSON());
+					}
+					
+					user.setValue("foundTreasures", foundTreasuresJSON);
 
 					JSONArray body = new JSONArray();
 					
@@ -280,20 +296,41 @@ public class AppServer {
 				
 				ModelType type = receivedMessage.getHeader().getResource().get(0).key;
 				
+				Pair<Boolean,Treasure> createResult = null;
+				
 				if(type == Model.ModelType.FOUND_TREASURE) {
 					
-					result = userController.validateTreasure(receivedMessage.getBody().getInt("treasureId"), receivedMessage.getBody().getString("answer"), receivedMessage.getBody().getString("token"), receivedMessage.getBody().getLong("userId"));
-					
-					if(result) {
+					try {
+						createResult = userController.validateTreasure(receivedMessage.getBody().getInt("treasureId"), receivedMessage.getBody().getString("answer"), receivedMessage.getBody().getString("token"), receivedMessage.getBody().getLong("userId"));
+					} catch (ResourceNotFoundException e) {
 						
-						String name = "";
-						if (receivedMessage.getBody().has("name"))
-							name = receivedMessage.getBody().getString("name");
-
-						System.out.println("User " + name + " found a treasure");
-						ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK);
+						ReplyMessage.buildResponseMessage(ReplyMessageStatus.RESOURCE_NOT_FOUND);
+						
+						
+					} catch (NotAuthorizedException e) {
+						ReplyMessage.buildResponseMessage(ReplyMessageStatus.UNAUTHORIZED);
+					
+					} catch(SQLException | RemoteException e) {
+						
+						ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 						
 					}
+					
+					String name = "";
+					if (receivedMessage.getBody().has("name") && createResult.key)
+						name = receivedMessage.getBody().getString("name");
+
+					System.out.println("User " + name + " found a treasure");
+					
+					JSONArray jsonArray = new JSONArray();
+					JSONObject json = new JSONObject();
+					json.put("result", createResult.key);
+					json.put("challenge", createResult.value.getValue("challenge"));
+					json.put("id", createResult.value.getValue("id"));
+					json.put("answer", createResult.value.getValue("answer"));
+					jsonArray.put(json);
+					
+					return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK,jsonArray);
 						
 					
 				}

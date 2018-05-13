@@ -24,9 +24,6 @@ import model.Treasure;
 import model.User;
 import util.Utils;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 public class DBServer extends UnicastRemoteObject implements DBOperations {
 
 	private static final long serialVersionUID = 1L;
@@ -66,7 +63,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 
 	public static void main(String[] args) throws Exception {
 		
-		Utils.setSecurityProperties();  
+		Utils.setSecurityProperties(false);  
 		
 		String dbManagerAddress = args[0];
 		DBServer dbServer = new DBServer(dbManagerAddress);	
@@ -269,24 +266,26 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		PreparedStatement stmt = connection.prepareStatement(
 			"SELECT * FROM (" +
-				"SELECT *, 0 as found" + 
-				"FROM treasure" + 
-				"WHERE (1, treasure.id)" + 
-				"IN (select * from user_treasure)" + 
+				"SELECT id, latitude, longitude, description, 1 as found, challenge, challengeSolution " + 
+				"FROM treasure " + 
+				"WHERE (?, treasure.id) " + 
+				"IN (select * from user_treasure) " + 
 				
-				"UNION" + 
+				"UNION " + 
 				
-				"SELECT *, 1 as found" + 
-				"FROM treasure" + 
-				"WHERE (1, treasure.id)" + 
-				"NOT IN (select * from user_treasure)" +
+				"SELECT id, latitude, longitude, description, 0 as found, challenge, challengeSolution " + 
+				"FROM treasure " + 
+				"WHERE (?, treasure.id) " + 
+				"NOT IN (select * from user_treasure) " +
 			");"
         );
 		
+		stmt.setLong(1, userId);
 		ResultSet resultSet = stmt.executeQuery();
+				
 		ArrayList<Treasure> treasures = new ArrayList<>();
 		ArrayList<Treasure> foundTreasures = new ArrayList<>();
-			
+		
 		while(resultSet.next()) {
 			
 			Treasure treasure = new Treasure();
@@ -294,36 +293,47 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			treasure.setValue("latitude", resultSet.getDouble(2));
 			treasure.setValue("longitude", resultSet.getDouble(3));
 			treasure.setValue("description", resultSet.getString(4));
-			treasure.setValue("found", resultSet.getInt(5));
-			
-			if(resultSet.getBoolean(5))
+						
+			if(resultSet.getBoolean(5) == true) {
+				
+				treasure.setValue("challenge", resultSet.getString(6));
+				treasure.setValue("answer", resultSet.getString(7));
+				
 				foundTreasures.add(treasure);
-			else
+			}
+				
+			else {
+				
+				treasure.setValue("challenge", "");
+				treasure.setValue("answer", "");
 				treasures.add(treasure);
+			}
+				
 		}
 		
 		Pair<ArrayList<Treasure>,ArrayList<Treasure>> result = new Pair<>(treasures,foundTreasures);					
 		return result;
 		
 	}
+	
 
 	@Override
-	public boolean validateTreasure(int treasureId, String answer) throws RemoteException, SQLException {
-		
-		System.out.println(treasureId);
-		
-		PreparedStatement stmt = connection.prepareStatement("SELECT challengeSolution FROM treasure WHERE id = ?");
+	public Treasure getTreasure(int treasureId) throws RemoteException, SQLException {
+				
+		PreparedStatement stmt = connection.prepareStatement("SELECT challenge, challengeSolution, id FROM treasure WHERE id = ?");
 		stmt.setInt(1, treasureId);
 		ResultSet result = stmt.executeQuery();
 		
 		if (!result.next())
-			return false;
+			return null;
 		
-		String regex = ".*" + result.getString(1) + ".*"; 
-		Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
-		Matcher matcher = pattern.matcher(answer);
+		Treasure treasure = new Treasure();
+		treasure.setValue("challenge", result.getString(1));
+		treasure.setValue("answer", result.getString(2));
+		treasure.setValue("id", result.getInt(3));
 		
-		return matcher.matches();
+		return treasure;
+		
 	}
 
 	@Override
