@@ -22,6 +22,7 @@ import sdis.model.User;
 import sdis.treasureseek.R;
 import sdis.util.NoAvailableServer;
 import sdis.util.ParseMessageException;
+import sdis.util.TreasureSeekException;
 
 
 public class Controller {
@@ -186,12 +187,12 @@ public class Controller {
 
     }
 
-    public boolean sendFoundTreasure(int treasureIndex, String answer) throws JSONException, ParseMessageException, IOException {
+    public boolean sendFoundTreasure(int treasureIndex, String answer) throws JSONException, TreasureSeekException, IOException {
 
         ServerMessage reply = connectionHelper.sendMessageOverSSL(buildFoundTreasureMessage(treasureIndex,answer), currentAppServerAddress, currentAppServerPort);
 
         if(reply == null || reply.getStatus() != ServerMessage.ReplyMessageStatus.OK)
-            return false;
+            throw new TreasureSeekException("Oops, Something Went Wrong connecting to Treasure Seek Server");
 
         JSONObject response = reply.getBody().getJSONObject(0);
 

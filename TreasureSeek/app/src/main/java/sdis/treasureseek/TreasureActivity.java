@@ -22,6 +22,7 @@ import sdis.controller.Controller;
 import sdis.model.Treasure;
 import sdis.util.NoAvailableServer;
 import sdis.util.ParseMessageException;
+import sdis.util.TreasureSeekException;
 
 public class TreasureActivity extends AppCompatActivity implements View.OnClickListener, TextWatcher {
 
@@ -102,6 +103,9 @@ public class TreasureActivity extends AppCompatActivity implements View.OnClickL
 
     class SendFoundTreasure extends AsyncTask<Void,Void,Boolean> {
 
+        boolean wrong = false;
+        String error = "";
+
         @Override
         protected void onPreExecute() {
             progressBar.setVisibility(View.VISIBLE);
@@ -111,11 +115,15 @@ public class TreasureActivity extends AppCompatActivity implements View.OnClickL
         protected Boolean doInBackground(Void... voids) {
 
             boolean result = false;
+            boolean somethingWrong = false;
 
             try {
                 controller.getAvailableServer();
                 result = controller.sendFoundTreasure(treasureIndex, String.valueOf(tvTreasureAnswer.getText()));
-            } catch (JSONException | ParseMessageException | IOException | NoAvailableServer e) {
+            } catch (JSONException | IOException | TreasureSeekException e) {
+
+                wrong = true;
+                error = e.getLocalizedMessage();
 
             }
 
@@ -127,6 +135,14 @@ public class TreasureActivity extends AppCompatActivity implements View.OnClickL
         protected void onPostExecute(Boolean result) {
 
             progressBar.setVisibility(View.INVISIBLE);
+
+            if(wrong) {
+
+                Toast.makeText(getApplicationContext(),error,Toast.LENGTH_LONG).show();
+                this.cancel(true);
+                progressBar.setVisibility(View.INVISIBLE);
+                return;
+            }
 
             if(result == true) {
 
