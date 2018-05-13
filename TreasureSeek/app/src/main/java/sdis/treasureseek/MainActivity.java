@@ -69,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
 
         this.facebookAccessToken = AccessToken.getCurrentAccessToken();
 
-        ipTextView.setText("192.168.1.73");
+        ipTextView.setText("192.168.1.105");
         loginButton.setEnabled(true);
 
     }

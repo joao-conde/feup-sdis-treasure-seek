@@ -19,6 +19,7 @@ import model.Treasure;
 import model.User;
 import util.DBManagerAlreadyExistsException;
 import util.Utils;
+import util.Utils.Pair;
 
 public class DBManager extends UnicastRemoteObject implements DBManagerOperations  {
 	
@@ -48,7 +49,7 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 	}
 	
 	public static void main(String[] args) {
-		Utils.setSecurityProperties();  
+		Utils.setSecurityProperties(false);  
 
 		try {
 			new DBManager();
@@ -139,12 +140,12 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 		
 	}
 	@Override
-	public ArrayList<Treasure> getAllTreasuresWithFoundInfo() throws RemoteException, SQLException {
+	public Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasuresWithFoundInfo(long userId) throws RemoteException, SQLException {
 		String db = pickRandomDB();
 
 		try {
 			DBOperations dbOperations = (DBOperations) registry.lookup(db);
-			return dbOperations.getAllTreasuresWithFoundInfo();
+			return dbOperations.getAllTreasuresWithFoundInfo(userId);
 		} catch (NotBoundException e) {
 			e.printStackTrace();
 		}
@@ -185,15 +186,16 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 	}
 
 	@Override
-	public boolean validateTreasure(int treasureId, String answer) throws RemoteException, SQLException {
-		boolean result = true;
+	public Treasure getTreasure(int treasureId) throws RemoteException, SQLException {
+		
+		Treasure result = null;
 		
 		for (String db : registry.list()) {
 			if(db.equals("db_manager")) continue;
 			
 			try {
 				DBOperations dbOperations = (DBOperations) registry.lookup(db);
-				result = result && dbOperations.validateTreasure(treasureId, answer);
+				result = dbOperations.getTreasure(treasureId);
 			} catch (NotBoundException e) {
 				e.printStackTrace();
 			}

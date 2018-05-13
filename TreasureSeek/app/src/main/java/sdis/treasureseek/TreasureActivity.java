@@ -1,5 +1,6 @@
 package sdis.treasureseek;
 
+import android.graphics.Color;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -10,10 +11,12 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONException;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import sdis.controller.Controller;
 import sdis.model.Treasure;
@@ -24,12 +27,15 @@ public class TreasureActivity extends AppCompatActivity implements View.OnClickL
 
     TextView tvTreasureDescription;
     TextView tvTreasureAnswer;
+    TextView tvTreasureQuestion;
+    TextView tvResult;
     Button buttonSendAnswer;
     ProgressBar progressBar;
 
     Controller controller = Controller.getInstance();
     Treasure treasure;
     int treasureIndex;
+    boolean found;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,19 +43,37 @@ public class TreasureActivity extends AppCompatActivity implements View.OnClickL
         setContentView(R.layout.activity_treasure);
         TreasureActivity.this.setTitle(getString(R.string.found_treasure));
 
+        this.found = getIntent().getBooleanExtra("found",false);
         this.treasureIndex = getIntent().getIntExtra("treasureIndex",0);
-        this.treasure = controller.getAllTreasures().get(treasureIndex);
+        this.treasure =  !found ? controller.getAllTreasures().get(treasureIndex) : ((ArrayList<Treasure>)controller.getLoggedUser().getValue("foundTreasures")).get(treasureIndex);
 
         tvTreasureDescription = findViewById(R.id.text_view_desc);
         tvTreasureDescription.setText((String) treasure.getValue("description"));
 
         tvTreasureAnswer = findViewById(R.id.text_view_answer);
-        tvTreasureAnswer.addTextChangedListener(this);
+        tvTreasureQuestion = findViewById(R.id.text_view_answer_title);
+        tvResult = findViewById(R.id.text_view_result);
 
         buttonSendAnswer = findViewById(R.id.button_sendAnswer);
-        buttonSendAnswer.setOnClickListener(this);
-
         progressBar = findViewById(R.id.sendTreasureProgressBar);
+
+        if(found) {
+
+            tvTreasureAnswer.setEnabled(false);
+            tvTreasureQuestion.setText((String)treasure.getValue("challenge"));
+            tvTreasureAnswer.setText((String)treasure.getValue("answer"));
+            tvResult.setText(getString(R.string.correctAnswer));
+            tvResult.setTextColor(Color.GREEN);
+
+        }
+
+        else {
+
+            tvTreasureAnswer.addTextChangedListener(this);
+            buttonSendAnswer.setOnClickListener(this);
+            tvResult.setTextColor(Color.RED);
+        }
+
 
     }
 
@@ -106,13 +130,12 @@ public class TreasureActivity extends AppCompatActivity implements View.OnClickL
 
             if(result == true) {
 
-                tvTreasureDescription.setText(tvTreasureAnswer.getText()+"\n Correct!!");
+                Toast.makeText(getApplicationContext(),getString(R.string.correctAnswer),Toast.LENGTH_LONG).show();
+                TreasureActivity.this.finish();
 
             }
-            else {
-                tvTreasureDescription.setText(tvTreasureAnswer.getText()+"\n Wrong!!");
-            }
-
+            else
+                tvResult.setText(R.string.wrongAnswer);
 
         }
     }
