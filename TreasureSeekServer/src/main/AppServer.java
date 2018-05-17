@@ -263,7 +263,7 @@ public class AppServer {
 					}
 
 					body.put(allTreasuresJSONArray);
-
+					
 					return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK, body);
 				}
 

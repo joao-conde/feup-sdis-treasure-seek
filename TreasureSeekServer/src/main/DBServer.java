@@ -269,18 +269,21 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 				"SELECT id, latitude, longitude, description, 1 as found, challenge, challengeSolution " + 
 				"FROM treasure " + 
 				"WHERE (?, treasure.id) " + 
-				"IN (select * from user_treasure) " + 
+				"IN (select userId, treasureId from user_treasure) " + 
 				
 				"UNION " + 
 				
 				"SELECT id, latitude, longitude, description, 0 as found, challenge, challengeSolution " + 
 				"FROM treasure " + 
 				"WHERE (?, treasure.id) " + 
-				"NOT IN (select * from user_treasure) " +
+				"NOT IN (select userId, treasureId from user_treasure) " +
 			");"
         );
 		
+		System.out.println("UserId: " + userId);
+		
 		stmt.setLong(1, userId);
+		stmt.setLong(2, userId);
 		ResultSet resultSet = stmt.executeQuery();
 				
 		ArrayList<Treasure> treasures = new ArrayList<>();
@@ -300,6 +303,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 				treasure.setValue("answer", resultSet.getString(7));
 				
 				foundTreasures.add(treasure);
+				
 			}
 				
 			else {
