@@ -16,6 +16,7 @@ import java.rmi.registry.Registry;
 import java.sql.SQLException;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Scanner;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -57,29 +58,33 @@ public class AppServer {
 
 	private static final int REGISTRY_PORT = 1099;
 	private static final int TIME_OUT = 2000;
-	// private static final int TO_MILLIS = 1000;
-
-	// private static String[] dbServerIPs;
+	public static final String DB_SERVER_OBJECT_NAME = "dbServerObject";
+	
 
 	private ExecutorService threadPool = Executors.newFixedThreadPool(100);
 
 	private UserController userController;
-	private DBOperations dbOperations;
 
 	private String lbHostAddress;
 	private String appServerHost;
 	public int clientServerPort;
-	private String dbServerHostAddress;
+	private ArrayList<String> dbServerHostAddresses = new ArrayList<>();
+	private ArrayList<DBOperations> dbRemoteObjects = new ArrayList<>();
+	public int dbRemoteIndex = 0;
 
 	public static void main(String[] args)
 			throws InterruptedException, ExecutionException, TimeoutException, RemoteException {
-
+				
+		if(args.length < 3) {
+			System.err.println("Invalid number of arguments.");
+		}
 		String loadBalancerHost = args[0];
 		String appServerHost = args[1].substring(0, args[1].indexOf(":"));
 		int clientServerPort = Integer.parseInt(args[1].substring(args[1].indexOf(":") + 1));
-		String dbManagerHost = args[2];
+		String[] dbServersAddresses = new String[args.length - 2];
+		System.arraycopy(args, 2, dbServersAddresses, 0, args.length - 2);
 
-		AppServer appServer = new AppServer(loadBalancerHost, appServerHost, clientServerPort, dbManagerHost);
+		AppServer appServer = new AppServer(loadBalancerHost, appServerHost, clientServerPort, dbServersAddresses);
 
 		Runtime.getRuntime().addShutdownHook(new Thread(new AppServer.CloseAppServer(appServer)));
 
@@ -87,26 +92,32 @@ public class AppServer {
 
 	}
 
-	public AppServer(String loadBalancerHost, String appServerHost, int clientServerPort, String dbManagerHost)
-			throws InterruptedException, RemoteException {
+	public AppServer(String loadBalancerHost, String appServerHost, int clientServerPort, String[] dbServersAddresses) throws InterruptedException, RemoteException {
 
 		Utils.setSecurityProperties(false);
 
 		this.lbHostAddress = loadBalancerHost;
 		this.appServerHost = appServerHost;
 		this.clientServerPort = clientServerPort;
-		this.dbServerHostAddress = dbManagerHost;
+		this.dbServerHostAddresses = new ArrayList<>(Arrays.asList(dbServersAddresses));
+		this.userController = new UserController(dbServerHostAddresses);
 
-		Registry registry = LocateRegistry.getRegistry(this.dbServerHostAddress, REGISTRY_PORT,
-				new SslRMIClientSocketFactory());
-
-		try {
-			this.dbOperations = (DBOperations) registry.lookup("db_manager");
-			this.userController = new UserController(dbOperations);
-		} catch (NotBoundException e1) {
-			System.err.println("DB Manager doesn't exist");
-			System.exit(1);
+		for (int i = 0; i < dbServerHostAddresses.size(); i++) {
+			
+			Registry registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), REGISTRY_PORT,
+					new SslRMIClientSocketFactory());
+			
+			try {
+				this.dbRemoteObjects.add((DBOperations) registry.lookup(DB_SERVER_OBJECT_NAME));
+			} 
+			catch (NotBoundException e1) {
+				System.err.println("DB with address: " + dbServerHostAddresses.get(i) + " doesn't exist");
+//				System.exit(1);
+			}
 		}
+		
+
+
 
 		try {
 			announceToLB();
@@ -119,8 +130,6 @@ public class AppServer {
 					+ LoadBalancer.SERVER_PORT);
 			System.exit(1);
 		}
-
-		this.userController = new UserController(dbOperations);
 
 	}
 
@@ -229,13 +238,12 @@ public class AppServer {
 
 				System.out.println("LOGIN APP SERVER");
 
-				User user = userController.loginUser(receivedMessage.getBody().getString("token"));
+				User user = userController.loginUser(receivedMessage.getBody().getString("token"), chooseDB());
 
 				if (user != null) {
-
-					Pair<ArrayList<Treasure>, ArrayList<Treasure>> allTreasures = userController
-							.getAllTreasures((long) user.getValue("id"));
-
+					
+					Pair<ArrayList<Treasure>,ArrayList<Treasure>> allTreasures = userController.getAllTreasures((long)user.getValue("id"), chooseDB());
+					
 					JSONArray foundTreasuresJSON = new JSONArray();
 
 					for (Treasure treasure : allTreasures.value) {
@@ -267,7 +275,7 @@ public class AppServer {
 			case LOGOUT:
 
 				boolean result = userController.logoutUser(receivedMessage.getBody().getLong("id"),
-						receivedMessage.getBody().getString("token"));
+						receivedMessage.getBody().getString("token"), chooseDB());
 
 				if (result) {
 
@@ -292,10 +300,13 @@ public class AppServer {
 				if (type == Model.ModelType.FOUND_TREASURE) {
 
 					try {
-						createResult = userController.validateTreasure(receivedMessage.getBody().getInt("treasureId"),
-								receivedMessage.getBody().getString("answer"),
-								receivedMessage.getBody().getString("token"),
-								receivedMessage.getBody().getLong("userId"));
+						createResult = userController.validateTreasure(
+							receivedMessage.getBody().getInt("treasureId"), 
+							receivedMessage.getBody().getString("answer"), 
+							receivedMessage.getBody().getString("token"), 
+							receivedMessage.getBody().getLong("userId"), 
+							chooseDB()
+						);
 					} catch (ResourceNotFoundException e) {
 
 						ReplyMessage.buildResponseMessage(ReplyMessageStatus.RESOURCE_NOT_FOUND);
@@ -331,7 +342,7 @@ public class AppServer {
 					boolean inserted = false;
 
 					try {
-						inserted = userController.createTreasure(receivedMessage.getBody());
+						inserted = userController.createTreasure(receivedMessage.getBody(), chooseDB());
 					} catch (ResourceNotFoundException e) {
 						ReplyMessage.buildResponseMessage(ReplyMessageStatus.RESOURCE_NOT_FOUND);
 					} catch (NotAuthorizedException e) {
@@ -453,4 +464,15 @@ public class AppServer {
 			}
 		};
 	}
+
+	public DBOperations chooseDB() {
+		// TODO: Choose db
+
+		// if (dbRemoteIndex ) {
+			
+		// }
+		return dbRemoteObjects.get(dbRemoteIndex);
+
+	}
+
 }
