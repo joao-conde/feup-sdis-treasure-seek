@@ -21,56 +21,53 @@ import util.DBManagerAlreadyExistsException;
 import util.Utils;
 import util.Utils.Pair;
 
-public class DBManager extends UnicastRemoteObject implements DBManagerOperations  {
-	
+public class DBManager extends UnicastRemoteObject implements DBManagerOperations {
+
 	private static final long serialVersionUID = 1L;
 	public static String[] ENC_PROTOCOLS = new String[] { "TLSv1.2" };
 	public static String[] ENC_CYPHER_SUITES = new String[] { "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256" };
-	
-    private Registry registry;
 
-//	private static final String DB_PATH = "../db/";
-    private static final String RMI_PREFIX = "db_";
+	private Registry registry;
+
+	// private static final String DB_PATH = "../db/";
+	private static final String RMI_PREFIX = "db_";
 
 	protected DBManager() throws RemoteException, DBManagerAlreadyExistsException, AlreadyBoundException {
-		super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));	
-		
+		super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
+
 		try {
-			registry = LocateRegistry.createRegistry(Registry.REGISTRY_PORT,
-    	            new SslRMIClientSocketFactory(),
-    	            new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, true));
-        	System.out.println("registry created.");
-		}
-		catch (ExportException e) {
+			registry = LocateRegistry.createRegistry(Registry.REGISTRY_PORT, new SslRMIClientSocketFactory(),
+					new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, true));
+			System.out.println("registry created.");
+		} catch (ExportException e) {
 			throw new DBManagerAlreadyExistsException();
 		}
-		
+
 		registry.bind("db_manager", this);
 	}
-	
+
 	public static void main(String[] args) {
-		Utils.setSecurityProperties(false);  
+		Utils.setSecurityProperties(false);
 
 		try {
 			new DBManager();
-		} 
-		catch (DBManagerAlreadyExistsException e) {
+		} catch (DBManagerAlreadyExistsException e) {
 			System.out.println(e.getMessage());
 			System.exit(1);
-		} 
-		catch (RemoteException | AlreadyBoundException e) {
+		} catch (RemoteException | AlreadyBoundException e) {
 			e.printStackTrace();
 		}
 	}
-	
+
 	@Override
 	public User insertUser(boolean appServerRequest, long id, String email, String token, String name)
-			throws RemoteException, SQLException {		
+			throws RemoteException, SQLException {
 
 		User user = null;
 		for (String db : registry.list()) {
-			if(db.equals("db_manager")) continue;
-			
+			if (db.equals("db_manager"))
+				continue;
+
 			try {
 				DBOperations dbOperations = (DBOperations) registry.lookup(db);
 				user = dbOperations.insertUser(appServerRequest, id, email, token, name);
@@ -80,6 +77,7 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 		}
 		return user;
 	}
+
 	@Override
 	public User getUser(boolean appServerRequest, long id) throws RemoteException, SQLException {
 
@@ -91,41 +89,41 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 		} catch (NotBoundException e) {
 			e.printStackTrace();
 		}
-		
+
 		return null;
 	}
-	
+
 	private String pickRandomDB() throws AccessException, RemoteException {
 		// randomly selects one of the available DB's
 		String[] boundNames = registry.list();
 		int idx;
-		do{
+		do {
 			idx = new Random().nextInt(boundNames.length);
-		}
-		while(boundNames[idx].equals("db_manager"));		
-		
+		} while (boundNames[idx].equals("db_manager"));
+
 		return boundNames[idx];
 	}
 
 	@Override
 	public boolean updateUser(boolean appServerRequest, long id, String token) throws RemoteException, SQLException {
 		boolean result = true;
-		
+
 		for (String db : registry.list()) {
-			if(db.equals("db_manager")) continue;
-			
+			if (db.equals("db_manager"))
+				continue;
+
 			try {
 				DBOperations dbOperations = (DBOperations) registry.lookup(db);
 				result = result && dbOperations.updateUser(appServerRequest, id, token);
 			} catch (NotBoundException e) {
 				e.printStackTrace();
 			}
-		}		
+		}
 		return result;
 	}
+
 	@Override
 	public ArrayList<Treasure> getAllTreasures() throws RemoteException, SQLException {
-
 
 		String db = pickRandomDB();
 
@@ -135,12 +133,14 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 		} catch (NotBoundException e) {
 			e.printStackTrace();
 		}
-		
+
 		return null;
-		
+
 	}
+
 	@Override
-	public Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasuresWithFoundInfo(long userId) throws RemoteException, SQLException {
+	public Pair<ArrayList<Treasure>, ArrayList<Treasure>> getAllTreasuresWithFoundInfo(long userId)
+			throws RemoteException, SQLException {
 		String db = pickRandomDB();
 
 		try {
@@ -149,10 +149,11 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 		} catch (NotBoundException e) {
 			e.printStackTrace();
 		}
-		
+
 		return null;
 
 	}
+
 	@Override
 	public int newDBServer(DBOperations dbServer) throws RemoteException {
 		System.out.println("New DB Server");
@@ -166,8 +167,7 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 			} catch (AlreadyBoundException e) {
 				System.out.println("obj already bound: " + RMI_PREFIX + dbNo);
 				dbNo++;
-			}
-			catch(RemoteException e) {
+			} catch (RemoteException e) {
 				e.printStackTrace();
 			}
 		}
@@ -187,24 +187,46 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 
 	@Override
 	public Treasure getTreasure(int treasureId) throws RemoteException, SQLException {
-		
+
 		Treasure result = null;
-		
+
 		for (String db : registry.list()) {
-			if(db.equals("db_manager")) continue;
-			
+			if (db.equals("db_manager"))
+				continue;
+
 			try {
 				DBOperations dbOperations = (DBOperations) registry.lookup(db);
 				result = dbOperations.getTreasure(treasureId);
 			} catch (NotBoundException e) {
 				e.printStackTrace();
 			}
-		}		
+		}
 		return result;
 	}
 
 	@Override
 	public boolean insertFoundTreasure(int treasureId, long userId) throws RemoteException, SQLException {
+		boolean result = true;
+
+		for (String db : registry.list()) {
+			if (db.equals("db_manager"))
+				continue;
+
+			try {
+				DBOperations dbOperations = (DBOperations) registry.lookup(db);
+				result = result && dbOperations.insertFoundTreasure(treasureId, userId);
+			} catch (NotBoundException e) {
+				e.printStackTrace();
+			}
+		}
+		return result;
+	}
+
+	@Override
+	public boolean insertTreasure(long latitude, long longitude, long userCreatorId, String description,
+			String challenge, String challengeSolution) throws SQLException, AccessException, RemoteException {
+		
+		
 		boolean result = true;
 		
 		for (String db : registry.list()) {
@@ -212,12 +234,13 @@ public class DBManager extends UnicastRemoteObject implements DBManagerOperation
 			
 			try {
 				DBOperations dbOperations = (DBOperations) registry.lookup(db);
-				result = result && dbOperations.insertFoundTreasure(treasureId, userId);
+				result = result && dbOperations.insertTreasure(latitude, longitude, userCreatorId, description, challenge, challengeSolution);
 			} catch (NotBoundException e) {
 				e.printStackTrace();
 			}
 		}		
 		return result;
 	}
+	
 
 }

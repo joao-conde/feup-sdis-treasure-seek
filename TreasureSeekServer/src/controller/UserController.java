@@ -12,6 +12,7 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import main.DBOperations;
@@ -164,8 +165,25 @@ public class UserController {
 						
 			return new Pair<Boolean,Treasure>(dbOperations.insertFoundTreasure(treasureId, userId), treasure);
 			
-			
+	}
+	
+	public boolean createTreasure(JSONObject msgBody) throws RemoteException, SQLException, JSONException, ResourceNotFoundException, NotAuthorizedException{
 		
+		User user = dbOperations.getUser(true, msgBody.getLong("userId"));
+		
+		if(user == null) throw new ResourceNotFoundException();
+		
+		if(!msgBody.getString("token").equals(user.getValue("token"))) throw new NotAuthorizedException();
+		
+		boolean inserted = dbOperations.insertTreasure(msgBody.getLong("latitude"), 
+														msgBody.getLong("longitude"), 
+														msgBody.getLong("userCreatorId"), 
+														msgBody.getString("description"),
+														msgBody.getString("challenge"),
+														msgBody.getString("challengeSolution"));
+
+		
+		return inserted;
 	}
 	
 	

@@ -39,8 +39,8 @@ public class Client {
 	private static int appServerPort;
 
 	public static void main(String[] args) throws UnknownHostException, IOException, InterruptedException {
-		Client cl = new Client(args[0], Integer.parseInt(args[1]), Integer.parseInt(args[2]), args[3]);
-		System.out.println("---CLIENT---");
+		new Client(args[0], Integer.parseInt(args[1]), Integer.parseInt(args[2]), args[3]);
+		System.out.println("---CLIENT FINISHED---");
 	}
 
 	public Client(String host, int port, int loginAttempts, String token)
@@ -59,27 +59,25 @@ public class Client {
 				e.printStackTrace();
 			}
 
-			String loginMessage = "LOGIN users " + json.toString();
+			String message = "LOGIN users " + json.toString();
 			
-            /*SSLSocket socket = (SSLSocket) SSLSocketFactory.getDefault().createSocket();
+            SSLSocket socket = (SSLSocket) SSLSocketFactory.getDefault().createSocket();
 
             socket.setEnabledProtocols(ENC_PROTOCOLS);
             socket.setEnabledCipherSuites(socket.getSupportedCipherSuites());
 
 			SocketAddress sockAddress = new InetSocketAddress(host, port);
-			socket.connect(sockAddress, 2000);*/
-			
-			Socket socket = new Socket();
-			SocketAddress sockAddress = new InetSocketAddress(host, port);
 			socket.connect(sockAddress, 2000);
+			
+			/*Socket socket = new Socket();
+			SocketAddress sockAddress = new InetSocketAddress(host, port);
+			socket.connect(sockAddress, 2000);*/
 
 			PrintWriter pw = new PrintWriter(socket.getOutputStream(), true);
 			Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream())));
 
-			pw.println(loginMessage);
+			pw.println(message);
 			
-			System.out.println("here");
-
 			pw.close();
 			scanner.close();
 		}

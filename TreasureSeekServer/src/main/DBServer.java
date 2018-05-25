@@ -353,5 +353,24 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		return true;
 	}
+	
+	@Override
+	public boolean insertTreasure(long latitude, long longitude, long userCreatorId, String description, String challenge, String challengeSolution) throws SQLException {
+		
+		PreparedStatement stmt = connection
+				.prepareStatement("INSERT INTO treasure (latitude, longitude, userCreatorId, description, challenge, challengeSolution) VALUES (?, ?, ?, ?, ?, ?)");
+		
+		stmt.setLong(1, latitude);
+		stmt.setLong(2, longitude);
+		stmt.setLong(3, userCreatorId);
+		stmt.setString(4, description);
+		stmt.setString(5, challenge);
+		stmt.setString(6, challengeSolution);
+		
+		stmt.executeUpdate();
+		
+		return true;
+	}
+
 
 }
