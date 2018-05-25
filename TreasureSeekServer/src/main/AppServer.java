@@ -70,7 +70,7 @@ public class AppServer {
 	public int clientServerPort;
 	private ArrayList<String> dbServerHostAddresses = new ArrayList<>();
 	private ArrayList<DBOperations> dbRemoteObjects = new ArrayList<>();
-	public int dbRemoteIndex = 0;
+	public int dbRemoteIndex = -1;
 
 	public static void main(String[] args)
 			throws InterruptedException, ExecutionException, TimeoutException, RemoteException {
@@ -107,13 +107,16 @@ public class AppServer {
 			Registry registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), REGISTRY_PORT,
 					new SslRMIClientSocketFactory());
 			
-			try {
-				this.dbRemoteObjects.add((DBOperations) registry.lookup(DB_SERVER_OBJECT_NAME));
-			} 
-			catch (NotBoundException e1) {
-				System.err.println("DB with address: " + dbServerHostAddresses.get(i) + " doesn't exist");
+			for (int j = 0; j < registry.list().length; j++) {
+				try {
+					this.dbRemoteObjects.add((DBOperations) registry.lookup(registry.list()[j]));
+				} 
+				catch (NotBoundException e1) {
+					System.err.println("DB with name: " + registry.list()[j] + " at host " + dbServerHostAddresses.get(i) + " doesn't exist");
 //				System.exit(1);
+				}
 			}
+				// this.dbRemoteObjects.add((DBOperations) registry.lookup(DB_SERVER_OBJECT_NAME));
 		}
 		
 
@@ -454,11 +457,12 @@ public class AppServer {
 	}
 
 	public DBOperations chooseDB() {
-		// TODO: Choose db
+		dbRemoteIndex++;
+		if (dbRemoteIndex == dbRemoteObjects.size()) {
+			dbRemoteIndex = 0;
+		}
+		System.out.println("Incremented dbRemoteIndex: " + dbRemoteIndex);
 
-		// if (dbRemoteIndex ) {
-			
-		// }
 		return dbRemoteObjects.get(dbRemoteIndex);
 
 	}
