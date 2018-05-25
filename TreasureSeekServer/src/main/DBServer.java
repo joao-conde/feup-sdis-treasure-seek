@@ -397,6 +397,9 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	}
 
 	public void replicateData(FunctionCallType functionName, ArrayList<String> dbServerHostAddresses, Object[] args) {
+		if(dbServerHostAddresses == null)
+			return;
+		
 		class ReplicateInsertFoundTreasure implements Runnable{
 
 			@Override
@@ -419,6 +422,12 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 								String userInfoEmail = (String) args[1];
 								String token = (String) args[2];
 								String userInfoName = (String) args[3];
+								System.out.println("INSERT_USER replicate");
+								System.out.println(userInfoId);
+								System.out.println(userInfoEmail);
+								System.out.println(token);
+								System.out.println(userInfoName);
+
 								remoteObj.insertUser(userInfoId, userInfoEmail,  token, userInfoName, null);
 
 								break;
@@ -426,7 +435,8 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 								
 								long id = (long) args[0];
 								String token2 = (String) args[1];
-					    		remoteObj.updateUser(id, token2, null);
+								System.out.println("UPDATE_USER replicate");
+								remoteObj.updateUser(id, token2, null);
 
 								break;
 							
@@ -434,6 +444,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 								
 								int treasureId2 = (int) args[0];
 								long userId = (long) args[1];
+								System.out.println("INSERT_FOUND_TREASURE replicate");
 								remoteObj.insertFoundTreasure(treasureId2, userId, null);
 
 								break;
