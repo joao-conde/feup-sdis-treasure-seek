@@ -1,6 +1,11 @@
 package sdis.treasureseek;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
+import android.content.pm.PackageManager;
+import android.location.Location;
 import android.os.AsyncTask;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Editable;
@@ -12,14 +17,21 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnSuccessListener;
+
 import org.json.JSONException;
 
 import java.io.IOException;
 
 import sdis.controller.Controller;
+import sdis.model.Treasure;
 import sdis.util.ParseMessageException;
 
 public class AddNewActivity extends AppCompatActivity implements TextWatcher {
+
+    private final int REQUEST_LOCATION = 1;
 
     EditText mTVDesc;
     EditText mTVChallenge;
@@ -28,6 +40,12 @@ public class AddNewActivity extends AppCompatActivity implements TextWatcher {
     ProgressBar progressBar;
 
     Controller controller;
+
+    private FusedLocationProviderClient mFusedLocationClient;
+
+
+    double lat = 0;
+    double lon = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,6 +73,15 @@ public class AddNewActivity extends AppCompatActivity implements TextWatcher {
 
             }
         });
+
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    REQUEST_LOCATION);
+        }
 
 
     }
@@ -86,6 +113,7 @@ public class AddNewActivity extends AppCompatActivity implements TextWatcher {
             progressBar.setVisibility(View.VISIBLE);
         }
 
+        @SuppressLint("MissingPermission")
         @Override
         protected Boolean doInBackground(Void... voids) {
 
@@ -94,8 +122,21 @@ public class AddNewActivity extends AppCompatActivity implements TextWatcher {
             String desc = String.valueOf(mTVDesc.getText());
             String challenge = String.valueOf(mTVChallenge.getText());
             String answer = String.valueOf(mTVAnswer.getText());
-            double lat = 41.177268;
-            double lon = -8.594565;
+
+            mFusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(AddNewActivity.this, new OnSuccessListener<Location>() {
+                        @Override
+                        public void onSuccess(Location location) {
+
+                            if (location != null) {
+
+                                AddNewActivity.this.lat = location.getLatitude();
+                                AddNewActivity.this.lon = location.getLongitude();
+
+                            }
+                        }
+                    });
+
 
 
             try {
@@ -109,11 +150,27 @@ public class AddNewActivity extends AppCompatActivity implements TextWatcher {
         }
 
 
+        @SuppressLint("MissingPermission")
         @Override
-        protected void onPostExecute(Boolean aVoid) {
+        protected void onPostExecute(Boolean result) {
 
-            Toast.makeText(getApplicationContext(),"Inserted",Toast.LENGTH_LONG);
             progressBar.setVisibility(View.INVISIBLE);
+
+            if(result == false) {
+                Toast.makeText(getApplicationContext(),"Inserted",Toast.LENGTH_LONG);
+                return;
+            }
+
+
+
+
+            Treasure treasure = new Treasure(0, lat, lon, String.valueOf(mTVDesc.getText()),
+                    String.valueOf(mTVChallenge.getText()), String.valueOf(mTVAnswer.getText()));
+
+
+
+            controller.addTreasure(treasure);
+            AddNewActivity.this.finish();
 
         }
     }

@@ -339,4 +339,8 @@ public class Controller {
         return false;
 
     }
+
+    public void addTreasure(Treasure treasure) {
+        treasures.add(treasure);
+    }
 }
