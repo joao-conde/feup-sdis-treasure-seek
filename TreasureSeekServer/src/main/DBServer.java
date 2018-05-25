@@ -13,13 +13,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.sql.Statement;
 import java.util.Scanner;
 
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import javax.rmi.ssl.SslRMIServerSocketFactory;
 
+import communications.ReplyMessage;
+import communications.ReplyMessage.ReplyMessageStatus;
 import util.Utils.Pair;
 import model.Treasure;
 import model.User;
@@ -45,13 +46,11 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
     private Connection connection;
 
           
-    protected DBServer(String localAddress, String[] otherDbServersAddress) throws Exception {
+    protected DBServer(String localAddress) throws Exception {
 		super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
 		
 		this.localAddress = localAddress;
-		
-		this.dbServerAddresList = (ArrayList<String>) Arrays.asList(otherDbServersAddress);
-		
+				
 		Registry registry = LocateRegistry.createRegistry(Registry.REGISTRY_PORT,
 				new SslRMIClientSocketFactory(),
 				new SslRMIServerSocketFactory(null,ENC_PROTOCOLS,true));
@@ -69,14 +68,11 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		Utils.setSecurityProperties(false);  
 		
 		String localAddress = args[0];
+						
+		DBServer dbServer = new DBServer(localAddress);
 		
-		String[] otherDBServersAddressArray = new String[args.length-1];
-		
-		System.arraycopy(args, 1, otherDBServersAddressArray, 0, otherDBServersAddressArray.length);
-		
-		DBServer dbServer = new DBServer(localAddress,otherDBServersAddressArray);
-		
-		Runtime.getRuntime().addShutdownHook(new Thread(new CloseDBServer(dbServer)));
+		System.out.println("DB Server running...");
+//		Runtime.getRuntime().addShutdownHook(new Thread(new CloseDBServer(dbServer)));
 	}	
 	
 	private void createConnection() throws SQLException, FileNotFoundException {
@@ -104,29 +100,29 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		}		
 	}
 
-	public static class CloseDBServer implements Runnable{
-		DBServer dbServer;
-	
-		public CloseDBServer(DBServer dbServer) {
-			this.dbServer = dbServer;
-		}
-
-		public void run() {
-			try {
-				
-				for(String dbAddress : dbServer.dbServerAddresList) {
-					dbServer.getDbOperations(dbAddress).removeDBServer(dbServer.localAddress);
-				}
-				
-				
-			} catch (RemoteException | NotBoundException e) {
-				e.printStackTrace();
-			}
-		};
-	}
+//	public static class CloseDBServer implements Runnable{
+//		DBServer dbServer;
+//	
+//		public CloseDBServer(DBServer dbServer) {
+//			this.dbServer = dbServer;
+//		}
+//
+//		public void run() {
+//			try {
+//				
+//				for(String dbAddress : dbServer.dbServerAddresList) {
+//					dbServer.getDbOperations(dbAddress).removeDBServer(dbServer.localAddress);
+//				}
+//				
+//				
+//			} catch (RemoteException | NotBoundException e) {
+//				e.printStackTrace();
+//			}
+//		};
+//	}
 
 	@Override
-	public User insertUser(boolean appServerRequest, long id, String email, String token, String name)
+	public User insertUser(boolean appServerRequest, long id, String email, String token, String name, ArrayList<String> dbServerHostAddresses)
 			throws RemoteException {
 
 		try {
@@ -160,7 +156,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 
 								DBOperations db = getDbOperations(dbAddress);
 
-								db.insertUser(false, id, email, token, name);
+								db.insertUser(false, id, email, token, name, dbServerHostAddresses);
 
 							}
 						} catch (Exception e) {
@@ -171,7 +167,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 
 				replicateChangeThread.start();
 			}
-
+			
 			return user;
 
 		} catch (SQLException e) {
@@ -198,13 +194,15 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		user.setValue("token", result.getString(3));
 		user.setValue("name", result.getString(4));
 		user.setValue("admin", result.getBoolean(5));
+		
+		
 
 		return user;
 
 	}
 
 	@Override
-	public boolean updateUser(boolean appServerRequest, long id, String token) throws RemoteException, SQLException {
+	public boolean updateUser(boolean appServerRequest, long id, String token, ArrayList<String> dbServerHostAddresses) throws RemoteException, SQLException {
 
 		try {
 
@@ -224,7 +222,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 								
 								DBOperations db = getDbOperations(dbAddress);
 								
-								db.updateUser(false, id, token);
+								db.updateUser(false, id, token, dbServerHostAddresses);
 								System.out.println("updateUser called for DB Server");
 
 							}
@@ -239,6 +237,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			}
 
 			System.out.println("User updated with success on DB");
+			
 			return true;
 
 		} catch (SQLException e) {
@@ -351,7 +350,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	}
 
 	@Override
-	public boolean insertFoundTreasure(int treasureId, long userId) throws RemoteException, SQLException {
+	public boolean insertFoundTreasure(int treasureId, long userId, ArrayList<String> dbServerHostAddresses) throws RemoteException, SQLException {
 		
 		PreparedStatement stmt = connection
 				.prepareStatement("INSERT INTO user_treasure (userId, treasureId) VALUES (?, ?)");
@@ -361,26 +360,55 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		stmt.executeUpdate();
 		
+		class ReplicateInsertFoundTreasure implements Runnable{
+
+			@Override
+			public void run() {
+				
+				for (int i = 0; i < dbServerHostAddresses.size(); i++) {
+					if (!dbServerHostAddresses.get(i).equals(localAddress)) {
+						
+						Registry registry;
+						try {
+							registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
+									new SslRMIClientSocketFactory());
+						
+							DBOperations remoteObj = (DBOperations) registry.lookup(DB_SERVER_OBJECT_NAME);
+							remoteObj.insertFoundTreasure(treasureId, userId, null);
+							
+
+						} catch (RemoteException | SQLException e) {
+							ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
+						} catch (NotBoundException e) {
+							e.printStackTrace();
+						}
+						
+					}
+				}
+			}
+		}
+		
+		if (dbServerHostAddresses != null) {
+			new Thread(new ReplicateInsertFoundTreasure()).start();
+		}
+			
 		return true;
 	}
 	
-	@Override
-    public void newDBServer(String dbServerAddress) throws RemoteException {
-        System.out.println("New DB Server");
-        
-        this.dbServerAddresList.add(dbServerAddress);
- 
-        
-        
-        
-    }
-
-
-	@Override
-	public boolean removeDBServer(String address) {
-	
-		return dbServerAddresList.remove(address);
-	}
+//	@Override
+//    public void newDBServer(String dbServerAddress) throws RemoteException {
+//        System.out.println("New DB Server");
+//        
+//        this.dbServerAddresList.add(dbServerAddress);
+//        
+//    }
+//
+//
+//	@Override
+//	public boolean removeDBServer(String address) {
+//	
+//		return dbServerAddresList.remove(address);
+//	}
 	
 	private DBOperations getDbOperations(String dbServerAddress) throws RemoteException, NotBoundException {
 		
