@@ -18,4 +18,6 @@ public interface DBOperations extends Remote {
 	Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasuresWithFoundInfo(long userId) throws RemoteException, SQLException;
 	Treasure getTreasure(int treasureId) throws RemoteException, SQLException;
 	boolean insertFoundTreasure(int treasureId, long userId) throws RemoteException, SQLException;
+	void newDBServer(String dbServerAddress) throws RemoteException;
+	boolean removeDBServer(String address) throws RemoteException;
 }

@@ -13,6 +13,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.sql.Statement;
 import java.util.Scanner;
 
@@ -29,50 +30,57 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	private static final long serialVersionUID = 1L;
 	public static String[] ENC_PROTOCOLS = new String[] { "TLSv1.2" };
 	public static String[] ENC_CYPHER_SUITES = new String[] { "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256" };
-
+	public static final String DB_SERVER_OBJECT_NAME = "dbServerObject";
+	
+	
 	private static final String DB_PATH = "../db/";
 	
-    private static final String RMI_PREFIX = "db_";
-
     private String DBNAME;
     private String DBURL;
-    public int dbNo;
+    //public int dbNo;
     
-    private Registry registry;
+    private String localAddress;
+    
+    private ArrayList<String> dbServerAddresList = new ArrayList<>();
     private Connection connection;
-    
-    private DBManagerOperations dbManagerRemoteObj;
-   
-    
-    protected DBServer(String dbManagerAddress) throws Exception {
+
+          
+    protected DBServer(String localAddress, String[] otherDbServersAddress) throws Exception {
 		super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
 		
-		registry = LocateRegistry.getRegistry(
-				dbManagerAddress, Registry.REGISTRY_PORT,
-				new SslRMIClientSocketFactory());
-		System.out.println("dbManager registry loaded");
+		this.localAddress = localAddress;
 		
-		dbManagerRemoteObj = (DBManagerOperations) registry.lookup("db_manager");
-
-		dbNo = dbManagerRemoteObj.newDBServer(this);
+		this.dbServerAddresList = (ArrayList<String>) Arrays.asList(otherDbServersAddress);
 		
-		System.out.println("dbServer created, No: " + dbNo);
-
+		Registry registry = LocateRegistry.createRegistry(Registry.REGISTRY_PORT,
+				new SslRMIClientSocketFactory(),
+				new SslRMIServerSocketFactory(null,ENC_PROTOCOLS,true));
+			
+				
+		registry.bind(DB_SERVER_OBJECT_NAME, this);
+		
+		
 		createConnection();
 	}
-
+    
+    
 	public static void main(String[] args) throws Exception {
 		
 		Utils.setSecurityProperties(false);  
 		
-		String dbManagerAddress = args[0];
-		DBServer dbServer = new DBServer(dbManagerAddress);	
-	
-		Runtime.getRuntime().addShutdownHook(new Thread(new DBServer.CloseDBServer(dbServer)));
+		String localAddress = args[0];
+		
+		String[] otherDBServersAddressArray = new String[args.length-1];
+		
+		System.arraycopy(args, 1, otherDBServersAddressArray, 0, otherDBServersAddressArray.length);
+		
+		DBServer dbServer = new DBServer(localAddress,otherDBServersAddressArray);
+		
+		Runtime.getRuntime().addShutdownHook(new Thread(new CloseDBServer(dbServer)));
 	}	
 	
 	private void createConnection() throws SQLException, FileNotFoundException {
-		DBNAME = "treasureSeekDB" + dbNo + ".db";
+		DBNAME = "treasureSeekDB.db";
 		DBURL = "jdbc:sqlite:../db/" + DBNAME;
 
 		boolean dbFileExists = new File(DB_PATH + DBNAME).exists();
@@ -96,7 +104,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		}		
 	}
 
-	static class CloseDBServer implements Runnable{
+	public static class CloseDBServer implements Runnable{
 		DBServer dbServer;
 	
 		public CloseDBServer(DBServer dbServer) {
@@ -105,8 +113,13 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 
 		public void run() {
 			try {
-				dbServer.dbManagerRemoteObj.removeDBServer(dbServer.dbNo);
-			} catch (RemoteException e) {
+				
+				for(String dbAddress : dbServer.dbServerAddresList) {
+					dbServer.getDbOperations(dbAddress).removeDBServer(dbServer.localAddress);
+				}
+				
+				
+			} catch (RemoteException | NotBoundException e) {
 				e.printStackTrace();
 			}
 		};
@@ -142,13 +155,12 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 					public void run() {
 
 						try {
-							String[] dbServers;
-							dbServers = registry.list();
-							for (String db : dbServers) {
-								if (db.equals(RMI_PREFIX + dbNo))
-									continue;
+							
+							for (String dbAddress : dbServerAddresList) {
 
-								((DBOperations) registry.lookup(db)).insertUser(false, id, email, token, name);
+								DBOperations db = getDbOperations(dbAddress);
+
+								db.insertUser(false, id, email, token, name);
 
 							}
 						} catch (Exception e) {
@@ -208,14 +220,12 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 					public void run() {
 
 						try {
-							String[] dbServers;
-							dbServers = registry.list();
-							for (String db : dbServers) {
-								if (db.equals(RMI_PREFIX + dbNo))
-									continue;
-
-								((DBOperations) registry.lookup(db)).updateUser(false, id, token);
-								System.out.println("updateUser called for DB" + db);
+							for (String dbAddress : dbServerAddresList) {
+								
+								DBOperations db = getDbOperations(dbAddress);
+								
+								db.updateUser(false, id, token);
+								System.out.println("updateUser called for DB Server");
 
 							}
 						} catch (RemoteException | SQLException | NotBoundException e) {
@@ -228,7 +238,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 				replicateChangeThread.start();
 			}
 
-			System.out.println("User updated with success on DB" + this.dbNo);
+			System.out.println("User updated with success on DB");
 			return true;
 
 		} catch (SQLException e) {
@@ -353,5 +363,34 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		return true;
 	}
+	
+	@Override
+    public void newDBServer(String dbServerAddress) throws RemoteException {
+        System.out.println("New DB Server");
+        
+        this.dbServerAddresList.add(dbServerAddress);
+ 
+        
+        
+        
+    }
+
+
+	@Override
+	public boolean removeDBServer(String address) {
+	
+		return dbServerAddresList.remove(address);
+	}
+	
+	private DBOperations getDbOperations(String dbServerAddress) throws RemoteException, NotBoundException {
+		
+		Registry registry = LocateRegistry.getRegistry(
+        		dbServerAddress, Registry.REGISTRY_PORT,
+				new SslRMIClientSocketFactory());
+		
+		return (DBOperations) registry.lookup(DB_SERVER_OBJECT_NAME);
+
+	}
+
 
 }
