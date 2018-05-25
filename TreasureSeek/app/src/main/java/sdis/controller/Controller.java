@@ -53,7 +53,6 @@ public class Controller {
 
     public static int LOAD_BALANCER_PORT = 6789;
 
-
     private Controller(Context context) {
         this.context = context;
         this.preferences = context.getSharedPreferences(context.getString(R.string.treasureSeekPreferences), Context.MODE_PRIVATE);
@@ -70,6 +69,7 @@ public class Controller {
 
         JSONArray foundTreasuresJSON = user.getJSONArray("foundTreasures");
         ArrayList<Treasure> foundTreasures = new ArrayList<>();
+
         for(int i = 0; i < foundTreasuresJSON.length(); i++) {
 
             foundTreasures.add(new Treasure((JSONObject) foundTreasuresJSON.get(i)));
@@ -132,6 +132,29 @@ public class Controller {
 
     }
 
+    private String buildNewTreasureMessage(String desc, String challenge, String answer, Double latitude, Double longitude) {
+
+        JSONObject json = new JSONObject();
+        String token = (String)loggedUser.getValue("token");
+        Long userId = (Long)loggedUser.getValue("id");
+
+        try {
+            json.put("token",token);
+            json.put("userCreatorId",userId);
+            json.put("description",desc);
+            json.put("challenge",challenge);
+            json.put("answer",answer);
+            json.put("latitude",latitude);
+            json.put("longitude",longitude);
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        return ClientMessage.buildRequestMessage(ClientMessage.MessageType.CREATE, Model.ModelType.TREASURE.getResourceName() ,json);
+
+    }
+
     public boolean getAvailableServer() throws IOException, JSONException, ParseMessageException, NoAvailableServer {
 
         Pair<String,Integer> result;
@@ -151,7 +174,6 @@ public class Controller {
         return true;
 
     }
-
 
     public boolean loginToTreasureSeek() throws IOException, ParseMessageException, JSONException {
 
@@ -256,7 +278,6 @@ public class Controller {
         return loggedUser;
     }
 
-
     public void setTreasures(JSONArray array) throws JSONException {
 
         this.treasures = new ArrayList<>();
@@ -305,4 +326,17 @@ public class Controller {
 
     }
 
+    public boolean insertNewTreasure(String desc, String challenge, String answer, Double latitude, Double longitude) throws JSONException, ParseMessageException, IOException {
+
+        ServerMessage reply =  connectionHelper.sendMessageOverSSL(buildNewTreasureMessage(desc,challenge,answer,latitude,longitude), currentAppServerAddress, currentAppServerPort);
+
+        if(reply != null && reply.getStatus() == ServerMessage.ReplyMessageStatus.OK) {
+
+            return true;
+
+        }
+
+        return false;
+
+    }
 }

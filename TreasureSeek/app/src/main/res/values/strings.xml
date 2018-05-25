@@ -22,4 +22,9 @@
     <string name="correctAnswer">Congratulations! You have found this treasure!!</string>
     <string name="wrongAnswer">Ouch! Wrong Answer, Please Try Again!!</string>
     <string name="generalError">Oops! Something went wrong contacting TreasureSeek Server! Try again later!</string>
+    <string name="defaultIP">172.30.0.162</string>
+    <string name="addTreasure">+</string>
+    <string name="treasureListTitle">Treasure List</string>
+    <string name="new_treasure_title">New Treasure</string>
+    <string name="challenge">Challenge</string>
 </resources>

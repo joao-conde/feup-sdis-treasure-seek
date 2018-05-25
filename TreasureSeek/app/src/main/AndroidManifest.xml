@@ -60,7 +60,9 @@
         <activity
             android:name=".TreasureMapActivity"
             android:label="@string/title_activity_treasure_map" />
-        <activity android:name=".TreasureActivity"></activity>
+        <activity android:name=".TreasureActivity" />
+        <activity android:name=".TreasureList" />
+        <activity android:name=".AddNewActivity"></activity>
     </application>
 
 </manifest>

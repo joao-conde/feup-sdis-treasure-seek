@@ -69,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
 
         this.facebookAccessToken = AccessToken.getCurrentAccessToken();
 
-        ipTextView.setText("192.168.1.105");
+        ipTextView.setText(getString(R.string.defaultIP));
         loginButton.setEnabled(true);
 
     }
@@ -79,7 +79,6 @@ public class MainActivity extends AppCompatActivity {
         facebookCallbackManager.onActivityResult(requestCode, resultCode, data);
         super.onActivityResult(requestCode, resultCode, data);
     }
-
 
     private class LoginToTreasureSeekTask extends AsyncTask<Void,Void,Boolean> {
 
@@ -103,8 +102,18 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Boolean result) {
 
-            if(result == true)
-                navigateToMap();
+            if(result == true) {
+                loginButton.setText(getString(R.string.logout));
+                progressBar.setVisibility(View.GONE);
+                if(!(Boolean)controller.getLoggedUser().getValue("admin")) {
+                    navigateToMap();
+                }
+                else {
+                    navigateToTreasureList();
+                }
+            }
+
+
 
             else {
                 showConnectionError();
@@ -262,12 +271,15 @@ public class MainActivity extends AppCompatActivity {
 
     private void navigateToMap() {
 
-
-        loginButton.setText(getString(R.string.logout));
         Intent intent = new Intent(MainActivity.this, TreasureMapActivity.class);
         startActivity(intent);
-        progressBar.setVisibility(View.GONE);
 
+    }
+
+    private void navigateToTreasureList() {
+
+        Intent intent = new Intent(MainActivity.this, TreasureList.class);
+        startActivity(intent);
 
 
     }
