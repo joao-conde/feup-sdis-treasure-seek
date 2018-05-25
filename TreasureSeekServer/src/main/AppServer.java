@@ -59,9 +59,7 @@ public class AppServer {
 	private static final int REGISTRY_PORT = 1099;
 	private static final int TIME_OUT = 2000;
 	public static final String DB_SERVER_OBJECT_NAME = "dbServerObject";
-//private static final int TO_MILLIS = 1000;
-
-	// private static String[] dbServerIPs;
+	
 
 	private ExecutorService threadPool = Executors.newFixedThreadPool(100);
 
@@ -72,6 +70,7 @@ public class AppServer {
 	public int clientServerPort;
 	private ArrayList<String> dbServerHostAddresses = new ArrayList<>();
 	private ArrayList<DBOperations> dbRemoteObjects = new ArrayList<>();
+	public int dbRemoteIndex = 0;
 
 	public static void main(String[] args)
 			throws InterruptedException, ExecutionException, TimeoutException, RemoteException {
@@ -456,7 +455,12 @@ public class AppServer {
 
 	public DBOperations chooseDB() {
 		// TODO: Choose db
-		return dbRemoteObjects.get(0);
+
+		// if (dbRemoteIndex ) {
+			
+		// }
+		return dbRemoteObjects.get(dbRemoteIndex);
+
 	}
 
 }
