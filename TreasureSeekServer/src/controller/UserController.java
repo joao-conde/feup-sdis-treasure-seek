@@ -166,18 +166,18 @@ public class UserController {
 	
 	public boolean createTreasure(JSONObject msgBody, DBOperations remoteObject) throws RemoteException, SQLException, JSONException, ResourceNotFoundException, NotAuthorizedException{
 		
-		User user = remoteObject.getUser(msgBody.getLong("userId"));
+		User user = remoteObject.getUser(msgBody.getLong("userCreatorId"));
 		
 		if(user == null) throw new ResourceNotFoundException();
 		
 		if(!msgBody.getString("token").equals(user.getValue("token"))) throw new NotAuthorizedException();
 		
-		boolean inserted = remoteObject.insertTreasure(msgBody.getLong("latitude"), 
-														msgBody.getLong("longitude"), 
+		boolean inserted = remoteObject.insertTreasure(msgBody.getDouble("latitude"), 
+														msgBody.getDouble("longitude"), 
 														msgBody.getLong("userCreatorId"), 
 														msgBody.getString("description"),
 														msgBody.getString("challenge"),
-														msgBody.getString("challengeSolution"), dbServerHostAddresses);
+														msgBody.getString("answer"), dbServerHostAddresses);
 
 		
 		return inserted;

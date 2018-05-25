@@ -362,19 +362,30 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	}
 	
 	@Override
-	public boolean insertTreasure(long latitude, long longitude, long userCreatorId, String description, String challenge, String challengeSolution, ArrayList<String> dbServerAddresses) throws SQLException {
+	public boolean insertTreasure(Double latitude, Double longitude, long userCreatorId, String description, String challenge, String challengeSolution, ArrayList<String> dbServerHostAddresses) throws SQLException {
 		
 		PreparedStatement stmt = connection
 				.prepareStatement("INSERT INTO treasure (latitude, longitude, userCreatorId, description, challenge, challengeSolution) VALUES (?, ?, ?, ?, ?, ?)");
 		
-		stmt.setLong(1, latitude);
-		stmt.setLong(2, longitude);
+		stmt.setDouble(1, latitude);
+		stmt.setDouble(2, longitude);
 		stmt.setLong(3, userCreatorId);
 		stmt.setString(4, description);
 		stmt.setString(5, challenge);
 		stmt.setString(6, challengeSolution);
 		
 		stmt.executeUpdate();
+
+		replicateData(FunctionCallType.INSERT_TREASURE, dbServerHostAddresses, 
+						new Object[] {
+							latitude,
+							longitude, 
+							userCreatorId,
+							description,
+							challenge,
+							challengeSolution
+						});
+
 		
 		return true;
 	}
@@ -407,7 +418,8 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	private enum FunctionCallType {
 		INSERT_USER,
 		UPDATE_USER,
-		INSERT_FOUND_TREASURE
+		INSERT_FOUND_TREASURE,
+		INSERT_TREASURE
 	}
 
 	public void replicateData(FunctionCallType functionName, ArrayList<String> dbServerHostAddresses, Object[] args) {
@@ -460,6 +472,13 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 								long userId = (long) args[1];
 								System.out.println("INSERT_FOUND_TREASURE replicate");
 								remoteObj.insertFoundTreasure(treasureId2, userId, null);
+
+								break;
+
+							case INSERT_TREASURE:
+								System.out.println("INSERT_TREASURE replicate");
+								remoteObj.insertTreasure((Double)args[0], (Double)args[1], (long)args[2], 
+															(String)args[3], (String)args[4], (String)args[5], null);
 
 								break;
 
