@@ -12,6 +12,7 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import main.DBOperations;
@@ -24,17 +25,14 @@ import util.Utils.Pair;
 public class UserController {
 	
 	private static final String FACEBOOK_API_ADDRES = "https://graph.facebook.com/v2.11/"; 
-	
-	private DBOperations dbOperations;
-	
-	
-	public UserController(DBOperations dbOperations) {
-		this.dbOperations = dbOperations;
+	private ArrayList<String> dbServerHostAddresses = new ArrayList<>();
+
+	public UserController(ArrayList<String> dbServerHostAddresses) {
+		this.dbServerHostAddresses = dbServerHostAddresses;
 	}
 
 
-
-	public User loginUser(String token) {
+	public User loginUser(String token, DBOperations remoteObject) {
 		
 		HttpURLConnection  facebookConneciton = null;
 		String urlString = FACEBOOK_API_ADDRES + "me?fields=name,email&access_token=" + token; 
@@ -72,12 +70,12 @@ public class UserController {
 		    
 		    System.out.println(userInfo.toString());
 		    
-		    User user = dbOperations.getUser(true, Long.parseLong(userInfo.getString("id")));
+		    User user = remoteObject.getUser(Long.parseLong(userInfo.getString("id")));
 		    
 		    if(user == null)
-		    		user = dbOperations.insertUser(true, userInfo.getLong("id"), userInfo.getString("email"),  token, userInfo.getString("name"));
+		    		user = remoteObject.insertUser(userInfo.getLong("id"), userInfo.getString("email"),  token, userInfo.getString("name"), dbServerHostAddresses);
 		    else
-		    		dbOperations.updateUser(true, (long)user.getValue("id"), token);
+		    		remoteObject.updateUser((long)user.getValue("id"), token, dbServerHostAddresses);
 		    		    		    
 		    scanner.close();
 		    return user;
@@ -100,11 +98,11 @@ public class UserController {
 	}
 		
 	
-	public boolean logoutUser(long id, String token) {
+	public boolean logoutUser(long id, String token, DBOperations remoteObject) {
 		
 		try {
 			
-			User user = dbOperations.getUser(true, id);
+			User user = remoteObject.getUser(id);
 			
 			if(user == null)
 				return false;
@@ -112,7 +110,7 @@ public class UserController {
 			if(!token.equals(user.getValue("token")))
 				return false;
 			
-			return dbOperations.updateUser(true, id, "");
+			return remoteObject.updateUser(id, "", dbServerHostAddresses);
 			
 			
 			
@@ -123,10 +121,10 @@ public class UserController {
 				
 	}
 	
-	public Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasures(long userId) {
+	public Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasures(long userId, DBOperations remoteObject) {
 		
 		try {
-			return dbOperations.getAllTreasuresWithFoundInfo(userId);
+			return remoteObject.getAllTreasuresWithFoundInfo(userId);
 		}
 		catch(RemoteException | SQLException e) {
 			System.out.println(e.getLocalizedMessage());
@@ -134,10 +132,10 @@ public class UserController {
 		}
 	}
 	
-	public Pair<Boolean,Treasure> validateTreasure(int treasureId, String answer, String token, long userId) throws ResourceNotFoundException, NotAuthorizedException, RemoteException, SQLException {
+	public Pair<Boolean,Treasure> validateTreasure(int treasureId, String answer, String token, long userId, DBOperations remoteObject) throws ResourceNotFoundException, NotAuthorizedException, RemoteException, SQLException {
 		
 			
-			User user = dbOperations.getUser(true, userId);
+			User user = remoteObject.getUser(userId);
 			
 			if(user == null)
 				throw new ResourceNotFoundException();
@@ -146,7 +144,7 @@ public class UserController {
 			if(!token.equals(user.getValue("token")))
 				throw new NotAuthorizedException();
 			
-			Treasure treasure = dbOperations.getTreasure(treasureId);
+			Treasure treasure = remoteObject.getTreasure(treasureId);
 			
 			if(treasure == null)
 				throw new ResourceNotFoundException();
@@ -162,10 +160,27 @@ public class UserController {
 			if(!isCorrectAnswer)
 				return new Pair<Boolean,Treasure>(false,treasure);
 						
-			return new Pair<Boolean,Treasure>(dbOperations.insertFoundTreasure(treasureId, userId), treasure);
+			return new Pair<Boolean,Treasure>(remoteObject.insertFoundTreasure(treasureId, userId, dbServerHostAddresses), treasure);
 			
-			
+	}
+	
+	public boolean createTreasure(JSONObject msgBody, DBOperations remoteObject) throws RemoteException, SQLException, JSONException, ResourceNotFoundException, NotAuthorizedException{
 		
+		User user = remoteObject.getUser(msgBody.getLong("userId"));
+		
+		if(user == null) throw new ResourceNotFoundException();
+		
+		if(!msgBody.getString("token").equals(user.getValue("token"))) throw new NotAuthorizedException();
+		
+		boolean inserted = remoteObject.insertTreasure(msgBody.getLong("latitude"), 
+														msgBody.getLong("longitude"), 
+														msgBody.getLong("userCreatorId"), 
+														msgBody.getString("description"),
+														msgBody.getString("challenge"),
+														msgBody.getString("challengeSolution"), dbServerHostAddresses);
+
+		
+		return inserted;
 	}
 	
 	
