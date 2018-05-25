@@ -455,7 +455,9 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 							
 
 						} catch (RemoteException | SQLException e) {
-							ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
+//							ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
+							e.printStackTrace();
+
 						} catch (NotBoundException e) {
 							e.printStackTrace();
 						}
@@ -465,9 +467,8 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			}
 		}
 		
-		if (dbServerHostAddresses != null) {
-			new Thread(new ReplicateInsertFoundTreasure()).start();
-		}
+		new Thread(new ReplicateInsertFoundTreasure()).start();
+
 	}
 
 }
