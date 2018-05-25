@@ -108,20 +108,10 @@ public class AddNewActivity extends AppCompatActivity implements TextWatcher {
 
     class SendNewTreasure extends AsyncTask<Void,Void,Boolean> {
 
+        @SuppressLint("MissingPermission")
         @Override
         protected void onPreExecute() {
             progressBar.setVisibility(View.VISIBLE);
-        }
-
-        @SuppressLint("MissingPermission")
-        @Override
-        protected Boolean doInBackground(Void... voids) {
-
-            boolean result = false;
-
-            String desc = String.valueOf(mTVDesc.getText());
-            String challenge = String.valueOf(mTVChallenge.getText());
-            String answer = String.valueOf(mTVAnswer.getText());
 
             mFusedLocationClient.getLastLocation()
                     .addOnSuccessListener(AddNewActivity.this, new OnSuccessListener<Location>() {
@@ -137,6 +127,17 @@ public class AddNewActivity extends AppCompatActivity implements TextWatcher {
                         }
                     });
 
+        }
+
+        @SuppressLint("MissingPermission")
+        @Override
+        protected Boolean doInBackground(Void... voids) {
+
+            boolean result = false;
+
+            String desc = String.valueOf(mTVDesc.getText());
+            String challenge = String.valueOf(mTVChallenge.getText());
+            String answer = String.valueOf(mTVAnswer.getText());
 
 
             try {
