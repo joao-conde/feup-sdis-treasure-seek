@@ -11,9 +11,9 @@ import util.Utils.Pair;
 
 public interface DBOperations extends Remote {
 
-	User insertUser(boolean appServerRequest, long id, String email, String token, String name, ArrayList<String> dbServerHostAddresses) throws RemoteException, SQLException;
-	User getUser(boolean appServerRequest, long id) throws RemoteException, SQLException;
-	boolean updateUser(boolean appServerRequest, long id, String token, ArrayList<String> dbServerHostAddresses) throws RemoteException, SQLException;
+	User insertUser(long id, String email, String token, String name, ArrayList<String> dbServerHostAddresses) throws RemoteException, SQLException;
+	User getUser(long id) throws RemoteException, SQLException;
+	boolean updateUser(long id, String token, ArrayList<String> dbServerHostAddresses) throws RemoteException, SQLException;
 	ArrayList<Treasure> getAllTreasures() throws RemoteException, SQLException;
 	Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasuresWithFoundInfo(long userId) throws RemoteException, SQLException;
 	Treasure getTreasure(int treasureId) throws RemoteException, SQLException;

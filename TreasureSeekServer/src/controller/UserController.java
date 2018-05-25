@@ -69,12 +69,12 @@ public class UserController {
 		    
 		    System.out.println(userInfo.toString());
 		    
-		    User user = remoteObject.getUser(true, Long.parseLong(userInfo.getString("id")));
+		    User user = remoteObject.getUser(Long.parseLong(userInfo.getString("id")));
 		    
 		    if(user == null)
-		    		user = remoteObject.insertUser(true, userInfo.getLong("id"), userInfo.getString("email"),  token, userInfo.getString("name"), dbServerHostAddresses);
+		    		user = remoteObject.insertUser(userInfo.getLong("id"), userInfo.getString("email"),  token, userInfo.getString("name"), dbServerHostAddresses);
 		    else
-		    		remoteObject.updateUser(true, (long)user.getValue("id"), token, dbServerHostAddresses);
+		    		remoteObject.updateUser((long)user.getValue("id"), token, dbServerHostAddresses);
 		    		    		    
 		    scanner.close();
 		    return user;
@@ -101,7 +101,7 @@ public class UserController {
 		
 		try {
 			
-			User user = remoteObject.getUser(true, id);
+			User user = remoteObject.getUser(id);
 			
 			if(user == null)
 				return false;
@@ -109,7 +109,7 @@ public class UserController {
 			if(!token.equals(user.getValue("token")))
 				return false;
 			
-			return remoteObject.updateUser(true, id, "", dbServerHostAddresses);
+			return remoteObject.updateUser(id, "", dbServerHostAddresses);
 			
 			
 			
@@ -134,7 +134,7 @@ public class UserController {
 	public Pair<Boolean,Treasure> validateTreasure(int treasureId, String answer, String token, long userId, DBOperations remoteObject) throws ResourceNotFoundException, NotAuthorizedException, RemoteException, SQLException {
 		
 			
-			User user = remoteObject.getUser(true, userId);
+			User user = remoteObject.getUser(userId);
 			
 			if(user == null)
 				throw new ResourceNotFoundException();
