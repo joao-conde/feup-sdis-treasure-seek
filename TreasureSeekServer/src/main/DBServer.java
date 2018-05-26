@@ -2,6 +2,7 @@ package main;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -13,6 +14,7 @@ import java.rmi.registry.Registry;
 import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.rmi.AlreadyBoundException;
+import java.rmi.ConnectException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -73,7 +75,6 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		dbServer.initRMIInterface();
 		System.out.println("DB Server running...");
-//		Runtime.getRuntime().addShutdownHook(new Thread(new CloseDBServer(dbServer)));
 	}	
 	
 	public static String usage() {
@@ -123,6 +124,8 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		DBNAME = OBJNAME + ".db";
 
 		createConnection();
+		Runtime.getRuntime().addShutdownHook(new Thread(new CloseDBServer(registry, OBJNAME)));
+
 	}
 	
 	private void createConnection() throws SQLException, RemoteException, IOException {
@@ -133,34 +136,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		connection = DriverManager.getConnection(DBURL);
 		
 		if(recoverDBAddress != null) {
-			Registry registry = null;
-			DBOperations obj = null;
-
-			try {
-				registry = LocateRegistry.getRegistry(recoverDBAddress, Registry.REGISTRY_PORT,
-						new SslRMIClientSocketFactory());				
-				String[] objList = registry.list();
-				for (int j = 0; j < objList.length; j++) {
-					try {
-						obj = (DBOperations) registry.lookup(objList[j]);
-					} catch (NotBoundException e) {
-						e.toString();
-						continue;
-					}
-				}
-			} catch (RemoteException e) {
-				e.toString();
-			}
-			
-			if(obj == null) {
-				System.err.println("Recover Database is not a valid one.");
-				System.exit(1);
-			}
-			
-            try (FileOutputStream fos = new FileOutputStream(DB_PATH + DBNAME)) {
-     		   fos.write(obj.recoverDB());
-     		   fos.close();
-            }
+			recoverDBFile();
 		}
 		else if (!dbFileExists) {
 			String schema = "";
@@ -177,6 +153,38 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			st.close();
 
 		}		
+	}
+
+
+	private void recoverDBFile() throws IOException, FileNotFoundException {
+		Registry registry = null;
+		DBOperations obj = null;
+
+		try {
+			registry = LocateRegistry.getRegistry(recoverDBAddress, Registry.REGISTRY_PORT,
+					new SslRMIClientSocketFactory());				
+			String[] objList = registry.list();
+			for (int j = 0; j < objList.length; j++) {
+				try {
+					obj = (DBOperations) registry.lookup(objList[j]);
+				} catch (NotBoundException e) {
+					e.toString();
+					continue;
+				}
+			}
+		} catch (RemoteException e) {
+			e.toString();
+		}
+		
+		if(obj == null) {
+			System.err.println("Recover Database is not a valid one.");
+			System.exit(1);
+		}
+		
+		try (FileOutputStream fos = new FileOutputStream(DB_PATH + DBNAME)) {
+		   fos.write(obj.recoverDB());
+		   fos.close();
+		}
 	}
 
 	@Override
@@ -436,7 +444,12 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 						registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
 								new SslRMIClientSocketFactory());
 						
-						String[] remoteObjects = registry.list();
+						String[] remoteObjects;
+						try {
+							remoteObjects = registry.list();
+						} catch (ConnectException e) {
+							continue;
+						}
 						for (int j = 0; j < remoteObjects.length; j++) {
 
 							if(remoteObjects[j].equals(OBJNAME) && dbServerHostAddresses.get(i).equals(localAddress)) {
@@ -494,9 +507,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 						
 
 					} catch (RemoteException | SQLException e) {
-						// ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 						e.printStackTrace();
-
 					} catch (NotBoundException e) {
 						e.printStackTrace();
 					}
@@ -509,13 +520,31 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 
 	}
 
-
 	@Override
 	public byte[] recoverDB() throws RemoteException, IOException {
 
-    	File file = new File("test.db");
+    	File file = new File(DB_PATH + DBNAME);
     	return Utils.readFile(file);
 
+	}
+
+	static class CloseDBServer implements Runnable { 
+		Registry registry; 
+		String objName; 
+		
+		public CloseDBServer(Registry registry, String objName) { 
+			this.registry = registry; 
+			this.objName = objName;
+		} 
+		
+		public void run() { 
+			try { 
+				registry.unbind(objName); 
+			} 
+			catch (RemoteException | NotBoundException e) { 
+				e.printStackTrace(); 
+			} 
+		}; 
 	}
 
 }

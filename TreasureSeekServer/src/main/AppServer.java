@@ -71,7 +71,7 @@ public class AppServer {
 	private String appServerHost;
 	public int clientServerPort;
 	private ArrayList<String> dbServerHostAddresses = new ArrayList<>();
-//	private ArrayList<DBOperations> dbRemoteObjects = new ArrayList<>();
+	private ArrayList<DBOperations> dbRemoteObjects = new ArrayList<>();
 	public int dbRemoteIndex = -1;
 
 	public static void main(String[] args)
@@ -126,7 +126,22 @@ public class AppServer {
 		this.dbServerHostAddresses = new ArrayList<>(Arrays.asList(dbServersAddresses));
 		this.userController = new UserController(dbServerHostAddresses);
 		
-
+		for (int i = 0; i < dbServerHostAddresses.size(); i++) {
+			
+			Registry registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
+					new SslRMIClientSocketFactory());
+			
+			for (int j = 0; j < registry.list().length; j++) {
+				try {
+					this.dbRemoteObjects.add((DBOperations) registry.lookup(registry.list()[j]));
+				} 
+				catch (NotBoundException e1) {
+					System.err.println("DB with name: " + registry.list()[j] + " at host " + dbServerHostAddresses.get(i) + " doesn't exist");
+//				System.exit(1);
+				}
+			}
+				// this.dbRemoteObjects.add((DBOperations) registry.lookup(DB_SERVER_OBJECT_NAME));
+		}
 
 
 		try {
@@ -477,44 +492,54 @@ public class AppServer {
 	}
 
 	public DBOperations chooseDB() {
-//		dbRemoteIndex++;
-//		if (dbRemoteIndex == dbRemoteObjects.size()) {
-//			dbRemoteIndex = 0;
-//		}
-//		System.out.println("Incremented dbRemoteIndex: " + dbRemoteIndex);
-//
-//		return dbRemoteObjects.get(dbRemoteIndex);
-		System.out.println("chooseDB");
+		// dbRemoteIndex++;
+		// if (dbRemoteIndex == dbRemoteObjects.size()) {
+		// 	dbRemoteIndex = 0;
+		// }
+		// System.out.println("Incremented dbRemoteIndex: " + dbRemoteIndex);
+
+		// return dbRemoteObjects.get(dbRemoteIndex);
 		dbRemoteIndex++;
 		int counter = 0;
-		for (int i = 0; i < dbServerHostAddresses.size(); i++) {
-			Registry registry = null;
-			try {
-				registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
-						new SslRMIClientSocketFactory());				
-				String[] objList = registry.list();
-				for (int j = 0; j < objList.length; j++) {
-					DBOperations obj;
-					try {
-						obj = (DBOperations) registry.lookup(objList[j]);
-					} catch (NotBoundException e) {
-						e.toString();
-						continue;
+
+		for (int t = 0; t < 2; t++) {
+			System.out.println("chooseDB: " + dbRemoteIndex);
+			for (int i = 0; i < dbServerHostAddresses.size(); i++) {
+				Registry registry = null;
+				try {
+					System.out.println("getRegistry: " + dbServerHostAddresses.get(i));
+					registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
+							new SslRMIClientSocketFactory());				
+					System.out.println("registry.list(): " + dbServerHostAddresses.get(i));
+					String[] objList = registry.list();
+					for (int j = 0; j < objList.length; j++) {
+						DBOperations obj;
+						try {
+							System.out.println("registry.lookup: " + objList[j]);
+							obj = (DBOperations) registry.lookup(objList[j]);
+						} catch (NotBoundException e) {
+							e.toString();
+							continue;
+						}
+						System.out.println("dbRemoteIndex: " + dbRemoteIndex + " == counter: " + counter);
+						if(dbRemoteIndex == counter) {
+							return obj;
+						}
+						else {
+							counter++;
+						}
 					}
-					if(dbRemoteIndex == counter) {
-						return obj;
-					}
-					else {
-						counter++;
-					}
+				} catch (RemoteException e) {
+					e.toString();
+					continue;
 				}
-			} catch (RemoteException e) {
-				e.toString();
-				continue;
 			}
+			dbRemoteIndex = 0;
+			counter = 0;
 		}
 		System.err.println("No available DB obj.");
 		return null;
+		
 	}
 
 }
