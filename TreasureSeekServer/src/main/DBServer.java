@@ -167,6 +167,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			for (int j = 0; j < objList.length; j++) {
 				try {
 					obj = (DBOperations) registry.lookup(objList[j]);
+					break;
 				} catch (NotBoundException e) {
 					e.toString();
 					continue;

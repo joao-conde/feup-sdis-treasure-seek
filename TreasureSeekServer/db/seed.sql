@@ -80,3 +80,6 @@ INSERT INTO treasure(latitude, longitude, userCreatorId,description,challenge, c
     		   "Tesouro do CICA", 
     		   "Qual o protocolo de VPN que o CICA utiliza para a VPN da FEUP?", 
     		   "l2tp");
+
+INSERT INTO user(id, email, token, name,admin, address) 
+    values(1972806272752741, "leogt-15@hotmail.com", "", "Leo Teixeira", 1, "");
