@@ -401,7 +401,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 						for (int j = 0; j < remoteObjects.length; j++) {
 							System.out.println("\treplicating data for " + remoteObjects[j]);
 
-							if(remoteObjects[j].equals(OBJNAME) && dbServerHostAddresses.get(i).equals(this.localAddress)) {
+							if(remoteObjects[j].equals(OBJNAME) && dbServerHostAddresses.get(i).equals(localAddress)) {
 								continue;
 							}
 							
@@ -451,7 +451,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 						
 
 					} catch (RemoteException | SQLException e) {
-							ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
+						// ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 						e.printStackTrace();
 
 					} catch (NotBoundException e) {
