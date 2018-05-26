@@ -10,7 +10,8 @@ CREATE TABLE user (
     email TEXT NOT NULL UNIQUE,
     token TEXT NOT NULL,
     name TEXT NOT NULL,
-    admin INTEGER CHECK (admin == 0 || admin == 1) DEFAULT 0
+    admin INTEGER CHECK (admin == 0 || admin == 1) DEFAULT 0,
+    address TEXT 
 );
 
 CREATE TABLE treasure (

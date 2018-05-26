@@ -57,6 +57,7 @@ public class AppServer {
 	public static String[] ENC_CYPHER_SUITES = new String[] { "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256" };
 
 	private static final int REGISTRY_PORT = 1099;
+	private static final int CLIENT_NOTIFICATION_PORT = 2500;
 	private static final int TIME_OUT = 2000;
 	public static final String DB_SERVER_OBJECT_NAME = "dbServerObject";
 	
@@ -241,7 +242,7 @@ public class AppServer {
 
 				System.out.println("LOGIN APP SERVER");
 
-				User user = userController.loginUser(receivedMessage.getBody().getString("token"), chooseDB());
+				User user = userController.loginUser(receivedMessage.getBody(), chooseDB());
 
 				if (user != null) {
 					

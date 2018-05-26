@@ -146,18 +146,19 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	}
 
 	@Override
-	public User insertUser(long id, String email, String token, String name, ArrayList<String> dbServerHostAddresses)
+	public User insertUser(long id, String email, String token, String name, String address, ArrayList<String> dbServerHostAddresses)
 			throws RemoteException {
 
 		try {
 
 			PreparedStatement stmt = connection
-					.prepareStatement("INSERT INTO user (id, email, token, name) VALUES (?, ?, ?, ?)");
+					.prepareStatement("INSERT INTO user (id, email, token, name, address) VALUES (?, ?, ?, ?, ?)");
 
 			stmt.setLong(1, id);
 			stmt.setString(2, email);
 			stmt.setString(3, token);
 			stmt.setString(4, name);
+			stmt.setString(5, address);
 			stmt.executeUpdate();
 
 			System.out.println("User inserted with success.");
@@ -168,8 +169,9 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			user.setValue("token", token);
 			user.setValue("name", name);
 			user.setValue("admin", false);
+			user.setValue("address", address);
 
-			replicateData(FunctionCallType.INSERT_USER, dbServerHostAddresses, new Object[] {id, email, token, name});
+			replicateData(FunctionCallType.INSERT_USER, dbServerHostAddresses, new Object[] {id, email, token, name, address});
 
 			return user;
 
@@ -203,19 +205,20 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	}
 
 	@Override
-	public boolean updateUser(long id, String token, ArrayList<String> dbServerHostAddresses) throws RemoteException, SQLException {
+	public boolean updateUser(long id, String token, String address, ArrayList<String> dbServerHostAddresses) throws RemoteException, SQLException {
 
 		try {
 
-			PreparedStatement stmt = connection.prepareStatement("UPDATE user SET token = ? WHERE id = ?");
+			PreparedStatement stmt = connection.prepareStatement("UPDATE user SET token = ? , address = ? WHERE id = ?");
 
 			stmt.setString(1, token);
-			stmt.setLong(2, id);
+			stmt.setString(2, address);
+			stmt.setLong(3, id);
 			stmt.executeUpdate();
 
 			System.out.println("User updated with success on DB");
 			
-			replicateData(FunctionCallType.UPDATE_USER, dbServerHostAddresses, new Object[] {id, token});
+			replicateData(FunctionCallType.UPDATE_USER, dbServerHostAddresses, new Object[] {id, token, address});
 
 			return true;
 
@@ -414,17 +417,19 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 								String userInfoEmail = (String) args[1];
 								String token = (String) args[2];
 								String userInfoName = (String) args[3];
+								String address = (String)args[4];
 								System.out.println("INSERT_USER sending replication request");
 
-								remoteObj.insertUser(userInfoId, userInfoEmail,  token, userInfoName, null);
+								remoteObj.insertUser(userInfoId, userInfoEmail,  token, userInfoName, address, null);
 
 								break;
 							case UPDATE_USER:
 								
 								long id = (long) args[0];
 								String token2 = (String) args[1];
+								String address2 = (String) args[2];
 								System.out.println("UPDATE_USER sending replication request");
-								remoteObj.updateUser(id, token2, null);
+								remoteObj.updateUser(id, token2, address2, null);
 
 								break;
 							

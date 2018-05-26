@@ -32,9 +32,13 @@ public class UserController {
 	}
 
 
-	public User loginUser(String token, DBOperations remoteObject) {
+	public User loginUser(JSONObject msgBody, DBOperations remoteObject) throws JSONException {
 		
 		HttpURLConnection  facebookConneciton = null;
+		
+		//String ipAddress = msgBody.getString("address");
+		String ipAddress = "TEST-IP: 170.30.0.88";
+		String token = msgBody.getString("token");
 		String urlString = FACEBOOK_API_ADDRES + "me?fields=name,email&access_token=" + token; 
 		
 		try {
@@ -73,9 +77,9 @@ public class UserController {
 		    User user = remoteObject.getUser(Long.parseLong(userInfo.getString("id")));
 		    
 		    if(user == null)
-		    		user = remoteObject.insertUser(userInfo.getLong("id"), userInfo.getString("email"),  token, userInfo.getString("name"), dbServerHostAddresses);
+		    		user = remoteObject.insertUser(userInfo.getLong("id"), userInfo.getString("email"), token, userInfo.getString("name"), ipAddress, dbServerHostAddresses);
 		    else
-		    		remoteObject.updateUser((long)user.getValue("id"), token, dbServerHostAddresses);
+		    		remoteObject.updateUser((long)user.getValue("id"), token, ipAddress, dbServerHostAddresses);
 		    		    		    
 		    scanner.close();
 		    return user;
@@ -110,7 +114,7 @@ public class UserController {
 			if(!token.equals(user.getValue("token")))
 				return false;
 			
-			return remoteObject.updateUser(id, "", dbServerHostAddresses);
+			return remoteObject.updateUser(id, "", "", dbServerHostAddresses);
 			
 			
 			
