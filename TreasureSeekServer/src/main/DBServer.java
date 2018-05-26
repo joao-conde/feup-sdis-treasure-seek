@@ -70,7 +70,6 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		dbServer.initRMIInterface();
 		System.out.println("DB Server running...");
-//		Runtime.getRuntime().addShutdownHook(new Thread(new CloseDBServer(dbServer)));
 	}	
 	
 	public static String usage() {
@@ -119,6 +118,8 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		DBNAME = OBJNAME + ".db";
 
 		createConnection();
+		Runtime.getRuntime().addShutdownHook(new Thread(new CloseDBServer(registry, OBJNAME)));
+
 	}
 	
 	private void createConnection() throws SQLException, FileNotFoundException {
@@ -473,6 +474,25 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		new Thread(new ReplicateInsertFoundTreasure()).start();
 
+	}
+
+	static class CloseDBServer implements Runnable { 
+		Registry registry; 
+		String objName; 
+		
+		public CloseDBServer(Registry registry, String objName) { 
+			this.registry = registry; 
+			this.objName = objName;
+		} 
+		
+		public void run() { 
+			try { 
+				registry.unbind(objName); 
+			} 
+			catch (RemoteException | NotBoundException e) { 
+				e.printStackTrace(); 
+			} 
+		}; 
 	}
 
 }
