@@ -12,6 +12,7 @@ import java.rmi.registry.Registry;
 import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.rmi.AlreadyBoundException;
+import java.rmi.ConnectException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -403,7 +404,12 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 						registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
 								new SslRMIClientSocketFactory());
 						
-						String[] remoteObjects = registry.list();
+						String[] remoteObjects;
+						try {
+							remoteObjects = registry.list();
+						} catch (ConnectException e) {
+							continue;
+						}
 						for (int j = 0; j < remoteObjects.length; j++) {
 
 							if(remoteObjects[j].equals(OBJNAME) && dbServerHostAddresses.get(i).equals(localAddress)) {
@@ -461,9 +467,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 						
 
 					} catch (RemoteException | SQLException e) {
-						// ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 						e.printStackTrace();
-
 					} catch (NotBoundException e) {
 						e.printStackTrace();
 					}
