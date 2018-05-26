@@ -211,7 +211,7 @@ public class Message {
 			header.setResourcePath(pathToResource);
 			message = new Message(header);
 			
-			if(messageType == MessageType.CREATE || messageType == MessageType.UPDATE || messageType == MessageType.LOGIN || messageType == MessageType.LOGOUT) {
+			if(messageType == MessageType.CREATE || messageType == MessageType.UPDATE || messageType == MessageType.LOGIN || messageType == MessageType.LOGOUT || messageType == MessageType.RETRIEVE) {
 				
 				bodyString = messageScanner.nextLine();
 				

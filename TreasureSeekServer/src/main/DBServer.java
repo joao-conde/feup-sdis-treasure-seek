@@ -36,7 +36,6 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	public static String[] ENC_PROTOCOLS = new String[] { "TLSv1.2" };
 	public static String[] ENC_CYPHER_SUITES = new String[] { "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256" };
 	public static final String DB_SERVER_OBJECT_NAME = "dbServerObject";
-	public String dbServerObjectName;
 	
 	private static final String DB_PATH = "../db/";
 	
@@ -161,7 +160,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			stmt.setString(5, address);
 			stmt.executeUpdate();
 
-			System.out.println("User inserted with success.");
+			System.out.println("User inserted with success on " + this.DBNAME);
 
 			User user = new User();
 			user.setValue("id", id);
@@ -216,7 +215,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			stmt.setLong(3, id);
 			stmt.executeUpdate();
 
-			System.out.println("User updated with success on DB");
+			System.out.println("User updated with success on DB " + this.DBNAME);
 			
 			replicateData(FunctionCallType.UPDATE_USER, dbServerHostAddresses, new Object[] {id, token, address});
 
@@ -380,7 +379,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		ArrayList<String> addresses = new ArrayList<String>();
 		
-		PreparedStatement stmt = connection.prepareStatement("SELECT address FROM user WHERE address != '' ");
+		PreparedStatement stmt = connection.prepareStatement("SELECT address FROM user WHERE address != '' AND  admin=0");
 		ResultSet result = stmt.executeQuery();
 
 		while (result.next()) {			
@@ -418,11 +417,13 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 						
 						String[] remoteObjects = registry.list();
 						for (int j = 0; j < remoteObjects.length; j++) {
-							System.out.println("\treplicating data for " + remoteObjects[j]);
 
 							if(remoteObjects[j].equals(OBJNAME) && dbServerHostAddresses.get(i).equals(localAddress)) {
+								System.out.println("This is my replicate request, I will ignore it");
 								continue;
 							}
+							
+							System.out.println("\treplicating data for " + remoteObjects[j]);
 							
 							DBOperations remoteObj = (DBOperations) registry.lookup(remoteObjects[j]);
 							
