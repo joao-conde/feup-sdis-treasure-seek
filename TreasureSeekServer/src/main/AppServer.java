@@ -6,9 +6,11 @@ import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.rmi.ConnectException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -70,12 +72,17 @@ public class AppServer {
 	private String appServerHost;
 	public int clientServerPort;
 	private ArrayList<String> dbServerHostAddresses = new ArrayList<>();
-	private ArrayList<DBOperations> dbRemoteObjects = new ArrayList<>();
+//	private ArrayList<DBOperations> dbRemoteObjects = new ArrayList<>();
 	public int dbRemoteIndex = -1;
 
 	public static void main(String[] args)
 			throws InterruptedException, ExecutionException, TimeoutException, RemoteException {
 				
+		if(Arrays.asList(args).indexOf("--help") != -1) {
+			System.out.println(usage());
+			System.exit(1);
+		}
+		
 		if(args.length < 3) {
 			System.err.println("Invalid number of arguments.");
 		}
@@ -93,6 +100,23 @@ public class AppServer {
 
 	}
 
+	public static String usage() {
+		
+		ByteArrayOutputStream outBuffer = new ByteArrayOutputStream();
+		PrintWriter out = new PrintWriter(outBuffer);
+		
+		out.println("Usage:");
+		out.println("run_app_server.sh <args>:");
+		out.println("\t<args>:");
+		out.println("\t--help ==> Help");
+		out.println("\t-lb <load balancer ip address> ==> Defines localhost IP Address");
+		out.println("\tFALTA CENAS");
+		out.close();
+		
+		return outBuffer.toString();
+		
+	}
+
 	public AppServer(String loadBalancerHost, String appServerHost, int clientServerPort, String[] dbServersAddresses) throws InterruptedException, RemoteException {
 
 		Utils.setSecurityProperties(false);
@@ -102,23 +126,6 @@ public class AppServer {
 		this.clientServerPort = clientServerPort;
 		this.dbServerHostAddresses = new ArrayList<>(Arrays.asList(dbServersAddresses));
 		this.userController = new UserController(dbServerHostAddresses);
-
-		for (int i = 0; i < dbServerHostAddresses.size(); i++) {
-			
-			Registry registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), REGISTRY_PORT,
-					new SslRMIClientSocketFactory());
-			
-			for (int j = 0; j < registry.list().length; j++) {
-				try {
-					this.dbRemoteObjects.add((DBOperations) registry.lookup(registry.list()[j]));
-				} 
-				catch (NotBoundException e1) {
-					System.err.println("DB with name: " + registry.list()[j] + " at host " + dbServerHostAddresses.get(i) + " doesn't exist");
-//				System.exit(1);
-				}
-			}
-				// this.dbRemoteObjects.add((DBOperations) registry.lookup(DB_SERVER_OBJECT_NAME));
-		}
 		
 
 
@@ -174,10 +181,11 @@ public class AppServer {
 	}
 
 	public void handleRequest(SSLSocket socket) throws InterruptedException, ExecutionException, IOException {
-
+		System.out.println("socket: " + socket);
 		HandleClientRequest callable = new HandleClientRequest(socket);
-
+		System.out.println("callable: " + callable);
 		Future<String> handler = threadPool.submit(callable);
+		System.out.println("handler: " + handler);
 
 		try {
 			handler.get(TIME_OUT, TimeUnit.MILLISECONDS);
@@ -470,14 +478,49 @@ public class AppServer {
 	}
 
 	public DBOperations chooseDB() {
+//		dbRemoteIndex++;
+//		if (dbRemoteIndex == dbRemoteObjects.size()) {
+//			dbRemoteIndex = 0;
+//		}
+//		System.out.println("Incremented dbRemoteIndex: " + dbRemoteIndex);
+//
+//		return dbRemoteObjects.get(dbRemoteIndex);
+		System.out.println("chooseDB");
 		dbRemoteIndex++;
-		if (dbRemoteIndex == dbRemoteObjects.size()) {
-			dbRemoteIndex = 0;
+		int counter = 0;
+		for (int i = 0; i < dbServerHostAddresses.size(); i++) {
+			Registry registry = null;
+			try {
+				registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), REGISTRY_PORT,
+						new SslRMIClientSocketFactory());				
+				try {
+					String[] objList = registry.list();
+					for (int j = 0; j < objList.length; j++) {
+						DBOperations obj;
+						try {
+							obj = (DBOperations) registry.lookup(objList[j]);
+						} catch (NotBoundException e) {
+							e.toString();
+							continue;
+						}
+						if(dbRemoteIndex == counter) {
+							return obj;
+						}
+						else {
+							counter++;
+						}
+					}
+				} catch (ConnectException e) {
+					e.toString();
+					continue;
+				}
+			} catch (RemoteException e) {
+				e.toString();
+				continue;
+			}
 		}
-		System.out.println("Incremented dbRemoteIndex: " + dbRemoteIndex);
-
-		return dbRemoteObjects.get(dbRemoteIndex);
-
+		System.err.println("No available DB obj.");
+		return null;
 	}
 
 }

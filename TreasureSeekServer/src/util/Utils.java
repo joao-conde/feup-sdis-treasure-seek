@@ -1,6 +1,7 @@
 package util;
 
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Objects;
 
 
@@ -44,6 +45,22 @@ public class Utils {
 		System.setProperty("javax.net.ssl.trustStore", trustStorePath);
 		System.setProperty("javax.net.ssl.trustStorePassword", password);
 
+	}
+	
+	public static String bindParamenter(String[] args, String prefix, String alternative, String usage) {
+
+		String result = alternative;
+		int index = Arrays.asList(args).indexOf(prefix);
+		if(index != -1) {
+			try {
+				result = args[index + 1];				
+			} catch (ArrayIndexOutOfBoundsException e) {
+				System.out.println(usage);
+				System.exit(1);
+			}
+		}
+		
+		return result;
 	}
 
 }
