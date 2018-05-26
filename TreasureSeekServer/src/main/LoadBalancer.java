@@ -1,11 +1,13 @@
 package main;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -47,6 +49,7 @@ public class LoadBalancer {
 		Utils.setSecurityProperties(false);
 		new LoadBalancer();
 	}
+	
 
 	private class ConnectionHandler implements Runnable {
 
@@ -240,6 +243,38 @@ public class LoadBalancer {
 		availableServers.add(server);
 
 		return server;
+	}
+	
+	public static String bindParamenter(String[] args, String prefix, String alternative) {
+
+		String result = alternative;
+		int index = Arrays.asList(args).indexOf(prefix);
+		if(index != -1) {
+			try {
+				result = args[index + 1];				
+			} catch (ArrayIndexOutOfBoundsException e) {
+				usage();
+				System.exit(1);
+			}
+		}
+		
+		return result;
+	}
+
+	private static void usage() {
+		
+		ByteArrayOutputStream outBuffer = new ByteArrayOutputStream();
+		PrintWriter out = new PrintWriter(outBuffer);
+		
+		out.println("Usage:");
+		out.println("run_load_balancer.sh <args>:");
+		out.println("\t<args>:");
+		out.println("\t--help => Help");
+		
+		out.close();
+		
+		System.out.println(outBuffer.toString());
+		
 	}
 
 }

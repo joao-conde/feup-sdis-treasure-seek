@@ -1,7 +1,9 @@
 package main;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -58,17 +60,12 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		Utils.setSecurityProperties(false);  
 		
-
-		String localAddress = InetAddress.getLocalHost().getHostAddress();
-		int lhIndex = Arrays.asList(args).indexOf("-lh");
-		if(lhIndex != -1) {
-			try {
-				localAddress = args[lhIndex + 1];				
-			} catch (ArrayIndexOutOfBoundsException e) {
-				usage();
-				System.exit(1);
-			}
+		if(Arrays.asList(args).indexOf("--help") != -1) {
+			usage();
+			System.exit(1);
 		}
+		
+		String localAddress = LoadBalancer.bindParamenter(args, "-lh", InetAddress.getLocalHost().getHostAddress());
 		DBServer dbServer = new DBServer(localAddress);
 		
 		dbServer.initRMIInterface();
@@ -77,10 +74,18 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	}	
 	
 	private static void usage() {
-
-		System.out.println("Usage:");
-		System.out.println("run_db_server.sh:");
-		System.out.println("\t-lh <localhost>");
+		
+		ByteArrayOutputStream outBuffer = new ByteArrayOutputStream();
+		PrintWriter out = new PrintWriter(outBuffer);
+		
+		out.println("Usage:");
+		out.println("run_db_server.sh <args>:");
+		out.println("\t<args>:");
+		out.println("\t--help ==> Help");
+		out.println("\t-lh <localhost> ==> Defines localhost IP Address");
+		out.close();
+		
+		System.out.println(outBuffer.toString());
 		
 	}
 
@@ -375,16 +380,18 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	}
 
 	public void replicateData(FunctionCallType functionName, ArrayList<String> dbServerHostAddresses, Object[] args) {
-		if(dbServerHostAddresses == null)
+
+		if(dbServerHostAddresses == null){
 			return;
-		
+		}
+
 		class ReplicateInsertFoundTreasure implements Runnable{
 
 			@Override
 			public void run() {
 				
 				for (int i = 0; i < dbServerHostAddresses.size(); i++) {
-//					System.out.println("replicating data for " + dbServerHostAddresses.get(i));
+					System.out.println("replicating data for " + dbServerHostAddresses.get(i));
 					Registry registry;
 					try {
 						registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
@@ -392,8 +399,9 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 						
 						String[] remoteObjects = registry.list();
 						for (int j = 0; j < remoteObjects.length; j++) {
-							
-							if(remoteObjects[j].equals(OBJNAME)) {
+							System.out.println("\treplicating data for " + remoteObjects[j]);
+
+							if(remoteObjects[j].equals(OBJNAME) && dbServerHostAddresses.get(i).equals(this.localAddress)) {
 								continue;
 							}
 							
@@ -406,11 +414,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 								String userInfoEmail = (String) args[1];
 								String token = (String) args[2];
 								String userInfoName = (String) args[3];
-								System.out.println("INSERT_USER replicate");
-								System.out.println(userInfoId);
-								System.out.println(userInfoEmail);
-								System.out.println(token);
-								System.out.println(userInfoName);
+								System.out.println("INSERT_USER sending replication request");
 
 								remoteObj.insertUser(userInfoId, userInfoEmail,  token, userInfoName, null);
 
@@ -419,7 +423,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 								
 								long id = (long) args[0];
 								String token2 = (String) args[1];
-								System.out.println("UPDATE_USER replicate");
+								System.out.println("UPDATE_USER sending replication request");
 								remoteObj.updateUser(id, token2, null);
 
 								break;
@@ -428,13 +432,13 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 								
 								int treasureId2 = (int) args[0];
 								long userId = (long) args[1];
-								System.out.println("INSERT_FOUND_TREASURE replicate");
+								System.out.println("INSERT_FOUND_TREASURE sending replication request");
 								remoteObj.insertFoundTreasure(treasureId2, userId, null);
 
 								break;
 
 							case INSERT_TREASURE:
-								System.out.println("INSERT_TREASURE replicate");
+								System.out.println("INSERT_TREASURE sending replication request");
 								remoteObj.insertTreasure((Double)args[0], (Double)args[1], (long)args[2], 
 															(String)args[3], (String)args[4], (String)args[5], null);
 
@@ -447,7 +451,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 						
 
 					} catch (RemoteException | SQLException e) {
-//							ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
+							ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 						e.printStackTrace();
 
 					} catch (NotBoundException e) {
