@@ -426,7 +426,8 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 							continue;
 						}
 						for (int j = 0; j < remoteObjects.length; j++) {
-
+									
+							
 							if(remoteObjects[j].equals(OBJNAME) && dbServerHostAddresses.get(i).equals(localAddress)) {
 								System.out.println("This is my replicate request, I will ignore it");
 								continue;
