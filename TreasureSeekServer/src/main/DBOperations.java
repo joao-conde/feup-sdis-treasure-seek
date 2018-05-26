@@ -23,6 +23,6 @@ public interface DBOperations extends Remote {
 	
 	boolean insertTreasure(Double latitude, Double longitude, long userCreatorId, String description, String challenge, String challengeSolution, ArrayList<String> dbServerHostAddresses) throws RemoteException, SQLException;	
 	byte[] recoverDB() throws RemoteException, IOException;
-	//	void newDBServer(String dbServerAddress) throws RemoteException;
-//	boolean removeDBServer(String address) throws RemoteException;
+	
+	ArrayList<String> getSubscribedUsersAddress() throws RemoteException, SQLException;
 }

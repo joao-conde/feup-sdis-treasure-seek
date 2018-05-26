@@ -203,7 +203,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			stmt.setString(5, address);
 			stmt.executeUpdate();
 
-			System.out.println("User inserted with success.");
+			System.out.println("User inserted with success on " + this.DBNAME);
 
 			User user = new User();
 			user.setValue("id", id);
@@ -258,7 +258,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			stmt.setLong(3, id);
 			stmt.executeUpdate();
 
-			System.out.println("User updated with success on DB");
+			System.out.println("User updated with success on DB " + this.DBNAME);
 			
 			replicateData(FunctionCallType.UPDATE_USER, dbServerHostAddresses, new Object[] {id, token, address});
 
@@ -419,6 +419,22 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		return true;
 	}
+	
+	@Override
+	public ArrayList<String> getSubscribedUsersAddress() throws SQLException{
+		
+		ArrayList<String> addresses = new ArrayList<String>();
+		
+		PreparedStatement stmt = connection.prepareStatement("SELECT address FROM user WHERE address != '' AND  admin=0");
+		ResultSet result = stmt.executeQuery();
+
+		while (result.next()) {			
+		  String address = result.getString("address");
+		  addresses.add(address);
+		}
+		
+		return addresses;	
+	}
 
 	private enum FunctionCallType {
 		INSERT_USER,
@@ -451,11 +467,14 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 							continue;
 						}
 						for (int j = 0; j < remoteObjects.length; j++) {
-
+									
+							
 							if(remoteObjects[j].equals(OBJNAME) && dbServerHostAddresses.get(i).equals(localAddress)) {
+								System.out.println("This is my replicate request, I will ignore it");
 								continue;
 							}
-							System.out.println("Relicating: " + dbServerHostAddresses.get(i) + " at " + remoteObjects[j]);
+
+							System.out.println("Replicating: " + dbServerHostAddresses.get(i) + " at " + remoteObjects[j]);
 
 							DBOperations remoteObj = (DBOperations) registry.lookup(remoteObjects[j]);
 							

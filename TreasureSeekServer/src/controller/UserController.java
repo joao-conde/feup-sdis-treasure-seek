@@ -36,8 +36,7 @@ public class UserController {
 		
 		HttpURLConnection  facebookConneciton = null;
 		
-		//String ipAddress = msgBody.getString("address");
-		String ipAddress = "TEST-IP: 170.30.0.88";
+		String ipAddress = msgBody.getString("address");
 		String token = msgBody.getString("token");
 		String urlString = FACEBOOK_API_ADDRES + "me?fields=name,email&access_token=" + token; 
 		
@@ -106,12 +105,7 @@ public class UserController {
 		
 		try {
 			
-			User user = remoteObject.getUser(id);
-			
-			if(user == null)
-				return false;
-						
-			if(!token.equals(user.getValue("token")))
+			if(!validateUser(id, token, remoteObject))
 				return false;
 			
 			return remoteObject.updateUser(id, "", "", dbServerHostAddresses);
@@ -124,6 +118,24 @@ public class UserController {
 		}
 				
 	}
+
+
+	private boolean validateUser(long id, String token, DBOperations remoteObject)
+			throws RemoteException, SQLException {
+		
+		System.out.println("REMOTEOBJ: " + remoteObject);
+		System.out.println("userID: " + id + "\ntoken: " + token);
+		
+		User user = remoteObject.getUser(id);
+		
+		if(user == null)
+			return false;
+					
+		if(!token.equals(user.getValue("token")))
+			return false;
+		
+		return true;
+	}
 	
 	public Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasures(long userId, DBOperations remoteObject) {
 		
@@ -134,6 +146,15 @@ public class UserController {
 			System.out.println(e.getLocalizedMessage());
 			return null;
 		}
+	}
+	
+	public Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasures(long userId, DBOperations remoteObject, String token) throws RemoteException, SQLException {
+		
+		if(!validateUser(userId, token, remoteObject))
+			return null;
+		
+		return getAllTreasures(userId, remoteObject);
+		
 	}
 	
 	public Pair<Boolean,Treasure> validateTreasure(int treasureId, String answer, String token, long userId, DBOperations remoteObject) throws ResourceNotFoundException, NotAuthorizedException, RemoteException, SQLException {
@@ -187,5 +208,9 @@ public class UserController {
 		return inserted;
 	}
 	
+	
+	public ArrayList<String> getSubscribedUsersAddresses(DBOperations remoteObject) throws SQLException, RemoteException {
+		return remoteObject.getSubscribedUsersAddress();	
+	}
 	
 }
