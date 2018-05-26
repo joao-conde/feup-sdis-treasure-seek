@@ -37,7 +37,7 @@ public class UserController {
 		HttpURLConnection  facebookConneciton = null;
 		
 		//String ipAddress = msgBody.getString("address");
-		String ipAddress = "TEST-IP: 170.30.0.88";
+		String ipAddress = "TEST-IP: 172.30.0.88";
 		String token = msgBody.getString("token");
 		String urlString = FACEBOOK_API_ADDRES + "me?fields=name,email&access_token=" + token; 
 		
@@ -187,5 +187,9 @@ public class UserController {
 		return inserted;
 	}
 	
+	
+	public ArrayList<String> getSubscribedUsersAddresses(DBOperations remoteObject) throws SQLException, RemoteException {
+		return remoteObject.getSubscribedUsersAddress();	
+	}
 	
 }

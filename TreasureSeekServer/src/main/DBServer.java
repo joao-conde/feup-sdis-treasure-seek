@@ -374,6 +374,22 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		return true;
 	}
+	
+	@Override
+	public ArrayList<String> getSubscribedUsersAddress() throws SQLException{
+		
+		ArrayList<String> addresses = new ArrayList<String>();
+		
+		PreparedStatement stmt = connection.prepareStatement("SELECT address FROM user WHERE address != '' ");
+		ResultSet result = stmt.executeQuery();
+
+		while (result.next()) {			
+		  String address = result.getString("address");
+		  addresses.add(address);
+		}
+		
+		return addresses;	
+	}
 
 	private enum FunctionCallType {
 		INSERT_USER,

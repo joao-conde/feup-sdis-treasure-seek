@@ -359,7 +359,7 @@ public class AppServer {
 					
 					if(inserted) {
 						//notify other clients
-						threadPool.execute(new NotifyClients());
+						threadPool.execute(new NotifyClients(userController, chooseDB()));
 						
 						return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK);
 					}
@@ -476,9 +476,36 @@ public class AppServer {
 	
 	public static class NotifyClients implements Runnable{
 
+		private UserController controller;
+		private DBOperations remoteObject;
+		
+		public NotifyClients(UserController controller, DBOperations remoteObject) {
+			this.controller = controller;
+			this.remoteObject = remoteObject;
+		}
+		
+		public void notify(String address) {
+			System.out.println("IP: " + address);
+		}
+		
 		@Override
 		public void run() {
-			System.out.println("NOTIFYING CLIENTS THREAD ON PORT: " + CLIENT_NOTIFICATION_PORT);
+			System.out.println("NOTIFYING CLIENTS THREAD");
+			
+			ArrayList<String> addresses = new ArrayList<String>();
+			try {
+				addresses = controller.getSubscribedUsersAddresses(remoteObject);
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (RemoteException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			if(addresses != null)
+				for(String address: addresses) notify(address);
+			
 		}
 		
 	}
