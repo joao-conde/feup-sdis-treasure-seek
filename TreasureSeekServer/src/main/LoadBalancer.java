@@ -45,6 +45,11 @@ public class LoadBalancer {
 	private ExecutorService threadPool;
 
 	public static void main(String[] args) throws IOException, ParseMessageException, JSONException {
+		if(Arrays.asList(args).indexOf("--help") != -1) {
+			System.out.println(usage());
+			System.exit(1);
+		}
+		
 		System.out.println("---Load Balancer---");
 		Utils.setSecurityProperties(false);
 		new LoadBalancer();
@@ -244,24 +249,9 @@ public class LoadBalancer {
 
 		return server;
 	}
+
 	
-	public static String bindParamenter(String[] args, String prefix, String alternative) {
-
-		String result = alternative;
-		int index = Arrays.asList(args).indexOf(prefix);
-		if(index != -1) {
-			try {
-				result = args[index + 1];				
-			} catch (ArrayIndexOutOfBoundsException e) {
-				usage();
-				System.exit(1);
-			}
-		}
-		
-		return result;
-	}
-
-	private static void usage() {
+	public static String usage() {
 		
 		ByteArrayOutputStream outBuffer = new ByteArrayOutputStream();
 		PrintWriter out = new PrintWriter(outBuffer);
@@ -273,7 +263,7 @@ public class LoadBalancer {
 		
 		out.close();
 		
-		System.out.println(outBuffer.toString());
+		return outBuffer.toString();
 		
 	}
 
