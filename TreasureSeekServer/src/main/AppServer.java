@@ -63,7 +63,7 @@ public class AppServer {
 	
 
 	private ExecutorService threadPool = Executors.newFixedThreadPool(100);
-
+	
 	private UserController userController;
 
 	private String lbHostAddress;
@@ -88,10 +88,11 @@ public class AppServer {
 		AppServer appServer = new AppServer(loadBalancerHost, appServerHost, clientServerPort, dbServersAddresses);
 
 		Runtime.getRuntime().addShutdownHook(new Thread(new AppServer.CloseAppServer(appServer)));
-
+				
 		appServer.receiveCalls();
 
 	}
+
 
 	public AppServer(String loadBalancerHost, String appServerHost, int clientServerPort, String[] dbServersAddresses) throws InterruptedException, RemoteException {
 
@@ -121,8 +122,6 @@ public class AppServer {
 		}
 		
 
-
-
 		try {
 			announceToLB();
 		} catch (SSLHandshakeException e) {
@@ -134,6 +133,7 @@ public class AppServer {
 					+ LoadBalancer.SERVER_PORT);
 			System.exit(1);
 		}
+		
 
 	}
 
@@ -357,8 +357,12 @@ public class AppServer {
 
 					System.out.println("TREASURE " + inserted);
 					
-					if(inserted)
+					if(inserted) {
+						//notify other clients
+						threadPool.execute(new NotifyClients());
+						
 						return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK);
+					}
 					else
 						return ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 				}
@@ -446,7 +450,7 @@ public class AppServer {
 
 	}
 
-	static class CloseAppServer implements Runnable {
+	public static class CloseAppServer implements Runnable {
 
 		AppServer appServer;
 
@@ -467,6 +471,16 @@ public class AppServer {
 				System.exit(1);
 			}
 		};
+	}
+	
+	
+	public static class NotifyClients implements Runnable{
+
+		@Override
+		public void run() {
+			System.out.println("NOTIFYING CLIENTS THREAD ON PORT: " + CLIENT_NOTIFICATION_PORT);
+		}
+		
 	}
 
 	public DBOperations chooseDB() {
