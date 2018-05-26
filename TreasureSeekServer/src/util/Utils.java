@@ -1,5 +1,9 @@
 package util;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Objects;
@@ -63,4 +67,23 @@ public class Utils {
 		return result;
 	}
 
+    public static byte[] readFile(File file) throws IOException{
+
+        byte[] buffer = new byte[(int) file.length()];
+        InputStream stream = null;
+        try {
+            stream = new FileInputStream(file);
+            if (stream.read(buffer) == -1) {
+                throw new IOException("EOF reached while trying to read the whole file");
+            }
+        } finally {
+            try {
+                if (stream != null)
+                    stream.close();
+            } catch (IOException e) {
+            	e.printStackTrace();
+            }
+        }
+        return buffer;
+    }
 }

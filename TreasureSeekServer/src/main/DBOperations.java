@@ -1,5 +1,6 @@
 package main;
 
+import java.io.IOException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.sql.SQLException;
@@ -21,6 +22,7 @@ public interface DBOperations extends Remote {
 	boolean insertFoundTreasure(int treasureId, long userId, ArrayList<String> dbServerHostAddresses) throws RemoteException, SQLException;
 	
 	boolean insertTreasure(Double latitude, Double longitude, long userCreatorId, String description, String challenge, String challengeSolution, ArrayList<String> dbServerHostAddresses) throws RemoteException, SQLException;	
+	byte[] recoverDB() throws RemoteException, IOException;
 	//	void newDBServer(String dbServerAddress) throws RemoteException;
 //	boolean removeDBServer(String address) throws RemoteException;
 }

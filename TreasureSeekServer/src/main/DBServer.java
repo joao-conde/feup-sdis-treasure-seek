@@ -2,7 +2,8 @@ package main;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.rmi.NotBoundException;
@@ -36,7 +37,6 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	public static String[] ENC_PROTOCOLS = new String[] { "TLSv1.2" };
 	public static String[] ENC_CYPHER_SUITES = new String[] { "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256" };
 	public static final String DB_SERVER_OBJECT_NAME = "dbServerObject";
-	public String dbServerObjectName;
 	
 	private static final String DB_PATH = "../db/";
 	
@@ -45,14 +45,16 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
     private String DBURL;
     
     private String localAddress;
+    private String recoverDBAddress;
     
     private Connection connection;
 
           
-    protected DBServer(String localAddress) throws Exception {
+    protected DBServer(String localAddress, String recoverDBAddress) throws Exception {
 		super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
 		
 		this.localAddress = localAddress;
+		this.recoverDBAddress = recoverDBAddress;
 	}
     
     
@@ -66,7 +68,8 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		}
 		
 		String localAddress = Utils.bindParamenter(args, "-lh", InetAddress.getLocalHost().getHostAddress(), usage());
-		DBServer dbServer = new DBServer(localAddress);
+		String recoverDBAddress = Utils.bindParamenter(args, "-r", null, usage());
+		DBServer dbServer = new DBServer(localAddress, recoverDBAddress);
 		
 		dbServer.initRMIInterface();
 		System.out.println("DB Server running...");
@@ -82,7 +85,8 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		out.println("run_db_server.sh <args>:");
 		out.println("\t<args>:");
 		out.println("\t--help ==> Help");
-		out.println("\t-lh <localhost> ==> Defines localhost IP Address");
+		out.println("\t-lh <localhost_address> ==> Defines localhost IP Address");
+		out.println("\t-r <recover_db_host_address> ==> Recover DB from IP Address");
 		out.close();
 		
 		return outBuffer.toString();
@@ -90,7 +94,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	}
 
 
-	private void initRMIInterface() throws FileNotFoundException, SQLException, RemoteException, IllegalArgumentException, AlreadyBoundException{
+	private void initRMIInterface() throws SQLException, IllegalArgumentException, AlreadyBoundException, IOException{
 		
 		Registry registry = null;
 		try {
@@ -121,14 +125,44 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		createConnection();
 	}
 	
-	private void createConnection() throws SQLException, FileNotFoundException {
+	private void createConnection() throws SQLException, RemoteException, IOException {
 		DBURL = "jdbc:sqlite:../db/" + DBNAME;
 
 		boolean dbFileExists = new File(DB_PATH + DBNAME).exists();
 
 		connection = DriverManager.getConnection(DBURL);
+		
+		if(recoverDBAddress != null) {
+			Registry registry = null;
+			DBOperations obj = null;
 
-		if (!dbFileExists) {
+			try {
+				registry = LocateRegistry.getRegistry(recoverDBAddress, Registry.REGISTRY_PORT,
+						new SslRMIClientSocketFactory());				
+				String[] objList = registry.list();
+				for (int j = 0; j < objList.length; j++) {
+					try {
+						obj = (DBOperations) registry.lookup(objList[j]);
+					} catch (NotBoundException e) {
+						e.toString();
+						continue;
+					}
+				}
+			} catch (RemoteException e) {
+				e.toString();
+			}
+			
+			if(obj == null) {
+				System.err.println("Recover Database is not a valid one.");
+				System.exit(1);
+			}
+			
+            try (FileOutputStream fos = new FileOutputStream(DB_PATH + DBNAME)) {
+     		   fos.write(obj.recoverDB());
+     		   fos.close();
+            }
+		}
+		else if (!dbFileExists) {
 			String schema = "";
 			Scanner scanner = new Scanner(new File(DB_PATH + "seed.sql"));
 
@@ -472,6 +506,15 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		}
 		
 		new Thread(new ReplicateInsertFoundTreasure()).start();
+
+	}
+
+
+	@Override
+	public byte[] recoverDB() throws RemoteException, IOException {
+
+    	File file = new File("test.db");
+    	return Utils.readFile(file);
 
 	}
 

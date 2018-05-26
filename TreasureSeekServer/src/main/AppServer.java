@@ -58,7 +58,6 @@ public class AppServer {
 	public static String[] ENC_PROTOCOLS = new String[] { "TLSv1.2" };
 	public static String[] ENC_CYPHER_SUITES = new String[] { "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256" };
 
-	private static final int REGISTRY_PORT = 1099;
 	private static final int CLIENT_NOTIFICATION_PORT = 2500;
 	private static final int TIME_OUT = 2000;
 	public static final String DB_SERVER_OBJECT_NAME = "dbServerObject";
@@ -491,28 +490,23 @@ public class AppServer {
 		for (int i = 0; i < dbServerHostAddresses.size(); i++) {
 			Registry registry = null;
 			try {
-				registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), REGISTRY_PORT,
+				registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
 						new SslRMIClientSocketFactory());				
-				try {
-					String[] objList = registry.list();
-					for (int j = 0; j < objList.length; j++) {
-						DBOperations obj;
-						try {
-							obj = (DBOperations) registry.lookup(objList[j]);
-						} catch (NotBoundException e) {
-							e.toString();
-							continue;
-						}
-						if(dbRemoteIndex == counter) {
-							return obj;
-						}
-						else {
-							counter++;
-						}
+				String[] objList = registry.list();
+				for (int j = 0; j < objList.length; j++) {
+					DBOperations obj;
+					try {
+						obj = (DBOperations) registry.lookup(objList[j]);
+					} catch (NotBoundException e) {
+						e.toString();
+						continue;
 					}
-				} catch (ConnectException e) {
-					e.toString();
-					continue;
+					if(dbRemoteIndex == counter) {
+						return obj;
+					}
+					else {
+						counter++;
+					}
 				}
 			} catch (RemoteException e) {
 				e.toString();
