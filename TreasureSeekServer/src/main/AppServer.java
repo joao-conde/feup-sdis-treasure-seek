@@ -425,6 +425,33 @@ public class AppServer {
 					return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK, treasures);
 				}
 
+				else if(retrieveType == Model.ModelType.USER && id == -1){
+
+					System.out.println("getting ranking");
+
+					JSONObject body = receivedMessage.getBody();
+
+					System.out.println("JSONOBJECT: " + body); 
+					
+					ArrayList<Pair<User, Integer>> ranking = userController
+							.getRanking(body.getLong("userId"), chooseDB(), body.getString("token"));
+					
+					JSONArray rankingJSONArray = new JSONArray();
+					
+					System.out.println("RANKING " + ranking);
+					
+					//TODO: check index out of range possible wrong json
+					for (Pair<User, Integer> userRanking : ranking) {
+						JSONObject jsonObj = userRanking.key.toJSON();
+						jsonObj.put("score", userRanking.value);
+
+						rankingJSONArray.put(jsonObj);
+					}
+
+					return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK, rankingJSONArray);
+
+				}
+
 				return ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 
 			default:
