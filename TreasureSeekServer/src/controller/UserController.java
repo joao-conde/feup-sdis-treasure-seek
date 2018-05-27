@@ -147,6 +147,20 @@ public class UserController {
 			return null;
 		}
 	}
+
+	public ArrayList<Pair<User,Integer>> getRanking(long userId, DBOperations remoteObject, String token) throws RemoteException, SQLException {
+		
+		if(!validateUser(userId, token, remoteObject))
+			return null;
+
+		try {
+			return remoteObject.getRanking();
+		}
+		catch(RemoteException | SQLException e) {
+			System.out.println(e.getLocalizedMessage());
+			return null;
+		}
+	}
 	
 	public Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasures(long userId, DBOperations remoteObject, String token) throws RemoteException, SQLException {
 		

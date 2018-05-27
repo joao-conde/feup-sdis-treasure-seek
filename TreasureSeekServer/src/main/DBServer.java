@@ -296,6 +296,38 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	}
 
 	@Override
+	public ArrayList<Pair<User, Integer>> getRanking() throws RemoteException, SQLException{
+
+		PreparedStatement stmt = connection.prepareStatement(
+			"SELECT user.*, count(user.id) "+
+			"FROM user_treasure" +
+			"JOIN user ON user.id = user_treasure.userid" + 
+			"GROUP BY user.id" +
+			"ORDER BY count(user.id) DESC;"
+		);
+		
+		ResultSet resultSet = stmt.executeQuery();
+
+		ArrayList<Pair<User, Integer>> ranking = new ArrayList<>();
+
+		while(resultSet.next()) {
+			
+			User user = new User();
+			user.setValue("id", resultSet.getInt(1));
+			user.setValue("email", resultSet.getString(2));
+			user.setValue("token", resultSet.getString(3));
+			user.setValue("name", resultSet.getString(4));
+			Integer score = resultSet.getInt(7);
+						
+			ranking.add(new Pair(user, score));
+				
+		}
+
+		return ranking;
+	}
+
+
+	@Override
 	public Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasuresWithFoundInfo(long userId) throws RemoteException, SQLException {
 		
 		PreparedStatement stmt = connection.prepareStatement(
