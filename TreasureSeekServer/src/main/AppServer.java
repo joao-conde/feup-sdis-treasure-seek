@@ -233,14 +233,13 @@ public class AppServer {
 				if (scanner.hasNextLine()) {
 
 					String messageString = scanner.nextLine();
-
+					
+					//System.out.println("STRING MSG\n" + messageString);
 					Message messageReceived = Message.parseMessage(messageString);
 					
 					System.out.println("\n\n\n\n\n----------MESSAGE RECEIVED AT APP SERVER----------\n\n" + messageReceived + "\n\n");
 					String reply = this.handleMessage(messageReceived);
 					
-					System.out.println("Passei o handle messgae");
-
 					pw.println(reply);
 				}
 
