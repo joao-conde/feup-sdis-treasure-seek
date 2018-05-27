@@ -2,20 +2,15 @@ package sdis.treasureseek;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.Notification;
-import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.NotificationManagerCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -39,7 +34,6 @@ import org.json.JSONException;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -211,7 +205,16 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+
+        if(item.getItemId() == R.id.action_ranking) {
+
+            Intent intent = new Intent(TreasureMapActivity.this, RankingActivity.class);
+            startActivity(intent);
+
+        }
+
         return super.onOptionsItemSelected(item);
+
     }
 
     private void drawTreasures(String newTreasure) {
@@ -322,7 +325,6 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
     @Override
     protected void onRestart() {
         super.onRestart();
-
         drawTreasures(null);
     }
 }

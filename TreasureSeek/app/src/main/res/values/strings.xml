@@ -28,4 +28,5 @@
     <string name="new_treasure_title">New Treasure</string>
     <string name="challenge">Challenge</string>
     <string name="ranking">ranking</string>
+    <string name="rankingList">Ranking</string>
 </resources>

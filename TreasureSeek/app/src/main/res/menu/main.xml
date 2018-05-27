@@ -7,15 +7,14 @@
         android:orderInCategory="1"
         app:showAsAction="always"/>
     <item
-        android:id="@+id/submmenu"
-        android:title="more"
+        android:id="@+id/submenu"
         android:orderInCategory="2"
+        android:icon="@drawable/ic_baseline_more_vert_24px"
         app:showAsAction="always">
 
         <menu>
 
-            <item android:id="@+id/action_settings"
-                android:icon="@android:drawable/ic_dialog_alert"
+            <item android:id="@+id/action_ranking"
                 app:showAsAction="ifRoom"
                 android:title="@string/ranking" />
 

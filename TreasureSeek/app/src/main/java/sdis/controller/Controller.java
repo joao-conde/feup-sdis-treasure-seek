@@ -417,4 +417,28 @@ public class Controller {
 
     }
 
+
+    public JSONArray getRanking() throws JSONException, IOException, ParseMessageException {
+
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("userId", loggedUser.getValue("id"));
+        jsonObject.put("token", loggedUser.getValue("token"));
+
+        String message = ClientMessage.buildRequestMessage(ClientMessage.MessageType.RETRIEVE,
+                Model.ModelType.USER.getResourceName(),jsonObject);
+
+        ServerMessage reply = connectionHelper.sendMessageOverSSL(message, currentAppServerAddress, currentAppServerPort);
+
+
+
+        if(reply.getStatus() == ServerMessage.ReplyMessageStatus.OK) {
+
+            return reply.getBody();
+
+        }
+
+        return new JSONArray();
+
+    }
+
 }
