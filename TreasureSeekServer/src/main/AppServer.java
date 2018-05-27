@@ -197,11 +197,8 @@ public class AppServer {
 	}
 
 	public void handleRequest(SSLSocket socket) throws InterruptedException, ExecutionException, IOException {
-		System.out.println("socket: " + socket);
 		HandleClientRequest callable = new HandleClientRequest(socket);
-		System.out.println("callable: " + callable);
 		Future<String> handler = threadPool.submit(callable);
-		System.out.println("handler: " + handler);
 
 		try {
 			handler.get(TIME_OUT, TimeUnit.MILLISECONDS);
@@ -240,11 +237,12 @@ public class AppServer {
 					System.out.println("\n\nMessage Received: " + messageString + "\n\n");
 
 					Message messageReceived = Message.parseMessage(messageString);
+					
+					System.out.println(messageReceived);
 					String reply = this.handleMessage(messageReceived);
 
 					pw.println(reply);
 
-					System.out.println(messageReceived);
 
 				}
 
@@ -265,8 +263,6 @@ public class AppServer {
 
 			case LOGIN:
 
-				System.out.println("LOGIN APP SERVER");
-
 				User user = userController.loginUser(receivedMessage.getBody(), chooseDB());
 
 				if (user != null) {
@@ -286,8 +282,6 @@ public class AppServer {
 
 					JSONObject userJson = user.toJSON();
 					body.put(userJson);
-
-					System.out.println("User " + (String) user.getValue("name") + " logged in");
 
 					JSONArray allTreasuresJSONArray = new JSONArray();
 
@@ -314,7 +308,6 @@ public class AppServer {
 					if (receivedMessage.getBody().has("name"))
 						name = receivedMessage.getBody().getString("name");
 
-					System.out.println("User " + name + " logged out");
 					return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK);
 
 				}
@@ -351,8 +344,6 @@ public class AppServer {
 					if (receivedMessage.getBody().has("name") && createResult.key)
 						name = receivedMessage.getBody().getString("name");
 
-					System.out.println("User " + name + " found a treasure");
-
 					JSONArray jsonArray = new JSONArray();
 					JSONObject json = new JSONObject();
 					json.put("result", createResult.key);
@@ -377,8 +368,6 @@ public class AppServer {
 					} catch (SQLException | RemoteException e) {
 						ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 					}
-
-					System.out.println("TREASURE " + inserted);
 
 					if (inserted) {
 
@@ -411,26 +400,29 @@ public class AppServer {
 
 				if (retrieveType == Model.ModelType.TREASURE && id == -1) {
 					
-					System.out.println("getting all treasures");
-
 					JSONObject body = receivedMessage.getBody();
-					
-					System.out.println("JSONOBJECT: " + body); 
-					
-					Pair<ArrayList<Treasure>, ArrayList<Treasure>> treasures = userController
+										
+					Pair<ArrayList<Treasure>, ArrayList<Treasure>> allTreasures = userController
 							.getAllTreasures(body.getLong("userId"), chooseDB(), body.getString("token"));
 					
-					JSONArray treasuresJSONArray = new JSONArray();
+					JSONArray treasures = new JSONArray();
 					
-					System.out.println("TREASURES " + treasures);
+					JSONArray foundTreasures = new JSONArray();
 					
-					//TODO: check index out of range possible wrong json
-					for (Treasure treasure : treasures.value) {
-						treasuresJSONArray.put(treasure.toJSON());
+					for (Treasure treasure : allTreasures.value) {
+						foundTreasures.put(treasure.toJSON());
+					}			
+
+					JSONArray notFoundTreasures = new JSONArray();
+
+					for (Treasure treasure : allTreasures.key) {
+						notFoundTreasures.put(treasure.toJSON());
 					}
-
-
-					return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK, treasuresJSONArray);
+					
+					treasures.put(notFoundTreasures);
+					treasures.put(foundTreasures);
+					
+					return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK, treasures);
 				}
 
 				return ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
@@ -555,7 +547,7 @@ public class AppServer {
 
 		@Override
 		public void run() {
-			System.out.println("NOTIFY CLIENT THREAD " + this.address);
+			System.out.println("Notifying client: " + this.address);
 
 			SocketAddress socketAddress = new InetSocketAddress(address, CLIENT_NOTIFICATION_PORT);
 			try {
@@ -573,13 +565,6 @@ public class AppServer {
 	}
 
 	public DBOperations chooseDB() {
-		// dbRemoteIndex++;
-		// if (dbRemoteIndex == dbRemoteObjects.size()) {
-		// 	dbRemoteIndex = 0;
-		// }
-		// System.out.println("Incremented dbRemoteIndex: " + dbRemoteIndex);
-
-		// return dbRemoteObjects.get(dbRemoteIndex);
 		dbRemoteIndex++;
 		int counter = 0;
 
@@ -602,7 +587,7 @@ public class AppServer {
 							e.toString();
 							continue;
 						}
-						System.out.println("dbRemoteIndex: " + dbRemoteIndex + " == counter: " + counter);
+
 						if(dbRemoteIndex == counter) {
 							return obj;
 						}
