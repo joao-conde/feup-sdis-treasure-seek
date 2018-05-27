@@ -216,6 +216,8 @@ public class AppServer {
 
 					Message messageReceived = Message.parseMessage(messageString);
 					String reply = this.handleMessage(messageReceived);
+					
+					System.out.println("Passei o handle messgae");
 
 					pw.println(reply);
 
@@ -227,8 +229,9 @@ public class AppServer {
 				pw.close();
 
 			} catch (IOException | ParseMessageException | JSONException e) {
-				e.printStackTrace();
+				//e.printStackTrace();
 				System.out.println(e.getMessage());
+				
 			}
 			return "OK";
 		}

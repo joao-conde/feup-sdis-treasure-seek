@@ -7,7 +7,9 @@ import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.ProgressBar;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,18 +34,21 @@ import sdis.util.NoAvailableServer;
 import sdis.util.ParseMessageException;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener {
 
     CallbackManager facebookCallbackManager = CallbackManager.Factory.create();
 
     Button loginButton;
     ProgressBar progressBar;
     TextView ipTextView;
+    Switch subscribeSwitch;
 
     LoginManager fbLoginManager;
     AccessToken facebookAccessToken;
 
     Controller controller;
+
+    boolean subscribeNotifications = false;
 
     private static final Pattern ipPattern = Pattern.compile("^([0-9]{1,3}\\.){3}[0-9]{1,3}$");;
 
@@ -67,6 +72,9 @@ public class MainActivity extends AppCompatActivity {
         ipTextView = findViewById(R.id.textIp);
         ipTextView.setOnKeyListener(new IpTextViewListener());
 
+        subscribeSwitch = findViewById(R.id.sw_sub_not);
+        subscribeSwitch.setOnCheckedChangeListener(this);
+
         this.facebookAccessToken = AccessToken.getCurrentAccessToken();
 
         ipTextView.setText(getString(R.string.defaultIP));
@@ -80,6 +88,13 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
     }
 
+    @Override
+    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+
+        subscribeNotifications = isChecked;
+
+    }
+
     private class LoginToTreasureSeekTask extends AsyncTask<Void,Void,Boolean> {
 
 
@@ -89,7 +104,7 @@ public class MainActivity extends AppCompatActivity {
             boolean result = false;
 
             try  {
-                result = controller.loginToTreasureSeek();
+                result = controller.loginToTreasureSeek(subscribeNotifications);
             }
 
             catch (IOException | ParseMessageException | JSONException e) {

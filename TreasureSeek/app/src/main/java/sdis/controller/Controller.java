@@ -2,6 +2,9 @@ package sdis.controller;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
+import android.text.format.Formatter;
 import android.util.Pair;
 
 import com.facebook.AccessToken;
@@ -11,6 +14,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 
 import sdis.communications.ClientMessage;
@@ -23,6 +29,8 @@ import sdis.treasureseek.R;
 import sdis.util.NoAvailableServer;
 import sdis.util.ParseMessageException;
 import sdis.util.TreasureSeekException;
+
+import static android.content.Context.WIFI_SERVICE;
 
 
 public class Controller {
@@ -80,12 +88,41 @@ public class Controller {
 
     }
 
-    private String buildLoginMessage() {
+    private void setLoggedUserFoundTreasures(JSONArray foundTreasuresJSON) throws JSONException {
+
+        ArrayList<Treasure> foundTreasures = new ArrayList<>();
+
+        for(int i = 0; i < foundTreasuresJSON.length(); i++) {
+
+            foundTreasures.add(new Treasure((JSONObject) foundTreasuresJSON.get(i)));
+
+        }
+
+        loggedUser.setValue("foundTreasures", foundTreasures);
+
+    }
+
+    private String buildLoginMessage(boolean subscribeNotifications) {
 
         JSONObject json = new JSONObject();
         String token = AccessToken.getCurrentAccessToken().getToken();
         try {
+
+            WifiManager wifiMgr = (WifiManager)  context.getSystemService(WIFI_SERVICE);
+            WifiInfo wifiInfo = wifiMgr.getConnectionInfo();
+
+            int ip = wifiInfo.getIpAddress();
+            
+            int firstOctect = ip & 0xff;
+            int secondOctect = ip >> 8 & 0xff;
+            int thirdOctect = ip >> 16 & 0xff;
+            int fourthOctect = ip >> 24 & 0xff;
+
+            String address = subscribeNotifications ? String.format("%d.%d.%d.%d", firstOctect,secondOctect,thirdOctect,fourthOctect) : "";
+
             json.put("token", token);
+            json.put("address",address);
+
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -132,6 +169,22 @@ public class Controller {
 
     }
 
+    private String buildRequestAllTreasuresMessage() {
+
+        JSONObject json = new JSONObject();
+        String token = (String)loggedUser.getValue("token");
+        try {
+            json.put("token", token);
+            json.put( "userId", loggedUser.getValue("id"));
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        return  ClientMessage.buildRequestMessage(ClientMessage.MessageType.RETRIEVE, Model.ModelType.TREASURE.getResourceName(), json);
+
+    }
+
     private String buildNewTreasureMessage(String desc, String challenge, String answer, Double latitude, Double longitude) {
 
         JSONObject json = new JSONObject();
@@ -175,9 +228,9 @@ public class Controller {
 
     }
 
-    public boolean loginToTreasureSeek() throws IOException, ParseMessageException, JSONException {
+    public boolean loginToTreasureSeek(boolean subscribeNotifications) throws IOException, ParseMessageException, JSONException {
 
-        ServerMessage reply =  connectionHelper.sendMessageOverSSL(buildLoginMessage(), currentAppServerAddress, currentAppServerPort);
+        ServerMessage reply =  connectionHelper.sendMessageOverSSL(buildLoginMessage(subscribeNotifications), currentAppServerAddress, currentAppServerPort);
 
         if(reply != null && reply.getStatus() == ServerMessage.ReplyMessageStatus.OK) {
 
@@ -343,4 +396,25 @@ public class Controller {
     public void addTreasure(Treasure treasure) {
         treasures.add(treasure);
     }
+
+    public boolean requestAllTreasures() throws JSONException, ParseMessageException, IOException {
+
+        String getAllTreasuresMessage = buildRequestAllTreasuresMessage();
+
+        ServerMessage reply =  connectionHelper.sendMessageOverSSL(getAllTreasuresMessage, currentAppServerAddress, currentAppServerPort);
+
+        if(reply != null && reply.getStatus() == ServerMessage.ReplyMessageStatus.OK) {
+
+            JSONArray treasures = (JSONArray) reply.getBody().get(0);
+            JSONArray foundTreasures = (JSONArray) reply.getBody().get(1);
+            setTreasures(treasures);
+            setLoggedUserFoundTreasures(foundTreasures);
+            return true;
+
+        }
+
+        return false;
+
+    }
+
 }

@@ -6,4 +6,22 @@
         android:id="@+id/nameOfUser"
         android:orderInCategory="1"
         app:showAsAction="always"/>
+    <item
+        android:id="@+id/submmenu"
+        android:title="more"
+        android:orderInCategory="2"
+        app:showAsAction="always">
+
+        <menu>
+
+            <item android:id="@+id/action_settings"
+                android:icon="@android:drawable/ic_dialog_alert"
+                app:showAsAction="ifRoom"
+                android:title="@string/ranking" />
+
+        </menu>
+
+
+    </item>
+
 </menu>

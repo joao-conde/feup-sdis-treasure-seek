@@ -209,4 +209,5 @@ public class ConnectionHelper {
     public void setLoadBalancerAddress(String loadBalancerAddress) {
         this.loadBalancerAddress = loadBalancerAddress;
     }
+
 }

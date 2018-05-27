@@ -2,13 +2,20 @@ package sdis.treasureseek;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -27,11 +34,22 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import org.json.JSONException;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 import sdis.controller.Controller;
 import sdis.model.Treasure;
+import sdis.util.ParseMessageException;
+import sdis.util.Utils;
 
 public class TreasureMapActivity extends AppCompatActivity implements OnMapReadyCallback {
 
@@ -39,12 +57,16 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
     private Controller controller;
 
     private final int REQUEST_LOCATION = 1;
+    private final int NOTIFICATIONS_PORT = 4012;
     private FusedLocationProviderClient fusedLocationProviderClient;
     private LocationRequest locationRequest;
     LocationCallback locationCallback;
 
     private ArrayList<Marker> treasureMarkers;
     private ArrayList<Marker> foundTreasuresMarkers;
+
+    private ServerSocket serverSocket;
+
 
 
     @Override
@@ -66,9 +88,80 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
 
         TreasureMapActivity.this.setTitle(getString(R.string.treasure_map));
 
+        try {
+             serverSocket = new ServerSocket(NOTIFICATIONS_PORT);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+        new Thread(new NotificationListener(this)).start();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        try {
+            this.serverSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    class NotificationListener implements Runnable {
+
+        Context context;
+
+        public NotificationListener(Context context) {
+            this.context = context;
+        }
+
+        @Override
+        public void run() {
+            try {
+
+                while(true) {
+
+                    Socket notificationSocket = serverSocket.accept();
+                    processNotification(notificationSocket,context);
+
+                }
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
 
     }
 
+    private void processNotification(Socket notificationSocket, Context context) throws IOException {
+
+        Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(notificationSocket.getInputStream())));
+        final String newTreasure = scanner.nextLine();
+        Utils.showNotification(this,"New Treasure","A New Treasure has been planted: " + newTreasure);
+
+        try {
+            controller.requestAllTreasures();
+        } catch (JSONException e) {
+            e.printStackTrace();
+        } catch (ParseMessageException e) {
+            e.printStackTrace();
+        }
+
+        Handler mainHandler = new Handler(context.getMainLooper());
+
+        mainHandler.post(new Runnable() {
+            @Override
+            public void run() {
+
+                drawTreasures(newTreasure);
+
+            }
+        });
+
+
+    }
 
     @Override
     protected void onPause() {
@@ -103,7 +196,7 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
 
         mMap.moveCamera(CameraUpdateFactory.newLatLng(feupLocation));
         mMap.moveCamera(CameraUpdateFactory.zoomTo(17));
-        drawTreasures();
+        drawTreasures(null);
 
 
     }
@@ -121,16 +214,24 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
         return super.onOptionsItemSelected(item);
     }
 
-    private void drawTreasures() {
+    private void drawTreasures(String newTreasure) {
 
         treasureMarkers = new ArrayList<>();
         foundTreasuresMarkers = new ArrayList<>();
+        mMap.clear();
 
 
         for (Treasure treasure : controller.getAllTreasures()) {
 
+            float colorTreasure = BitmapDescriptorFactory.HUE_RED;
+            String treasureDesc = (String) treasure.getValue("description");
+
+            if(newTreasure != null && newTreasure.equals(treasureDesc))
+                colorTreasure = BitmapDescriptorFactory.HUE_BLUE;
+
+
             LatLng pos = new LatLng((double) treasure.getValue("latitude"), (double) treasure.getValue("longitude"));
-            Marker marker = mMap.addMarker(new MarkerOptions().position(pos).title((String) treasure.getValue("description")));
+            Marker marker = mMap.addMarker(new MarkerOptions().position(pos).title(treasureDesc).icon(BitmapDescriptorFactory.defaultMarker(colorTreasure)));
 
             treasureMarkers.add(marker);
 
@@ -206,7 +307,10 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
             Intent intent = new Intent(TreasureMapActivity.this, TreasureActivity.class);
             intent.putExtra("treasureIndex", index);
             intent.putExtra("found", treasureIndex == -1);
+
+
             startActivity(intent);
+
 
             return false;
 
@@ -218,7 +322,7 @@ public class TreasureMapActivity extends AppCompatActivity implements OnMapReady
     @Override
     protected void onRestart() {
         super.onRestart();
-        mMap.clear();
-        drawTreasures();
+
+        drawTreasures(null);
     }
 }

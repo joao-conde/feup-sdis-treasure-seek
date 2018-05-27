@@ -76,6 +76,12 @@ public class ClientMessage {
 
     }
 
+    public static String buildRequestMessage(MessageType type, String resourcePath) {
+
+        return type.description + " " + resourcePath;
+
+    }
+
 
 
 

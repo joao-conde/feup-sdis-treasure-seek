@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <application
         android:allowBackup="true"
@@ -62,7 +63,8 @@
             android:label="@string/title_activity_treasure_map" />
         <activity android:name=".TreasureActivity" />
         <activity android:name=".TreasureList" />
-        <activity android:name=".AddNewActivity"></activity>
+        <activity android:name=".AddNewActivity" />
+        <activity android:name=".RankingActivity"></activity>
     </application>
 
 </manifest>

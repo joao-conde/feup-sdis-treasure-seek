@@ -141,6 +141,7 @@ public class AddNewActivity extends AppCompatActivity implements TextWatcher {
 
 
             try {
+                while(lat == 0) continue;
                 result = controller.insertNewTreasure(desc,challenge,answer,lat,lon);
             }
             catch (JSONException | ParseMessageException | IOException e) {
