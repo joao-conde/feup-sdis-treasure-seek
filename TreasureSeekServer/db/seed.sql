@@ -10,7 +10,8 @@ CREATE TABLE user (
     email TEXT NOT NULL UNIQUE,
     token TEXT NOT NULL,
     name TEXT NOT NULL,
-    admin INTEGER CHECK (admin == 0 || admin == 1) DEFAULT 0
+    admin INTEGER CHECK (admin == 0 || admin == 1) DEFAULT 0,
+    address TEXT 
 );
 
 CREATE TABLE treasure (
@@ -79,3 +80,6 @@ INSERT INTO treasure(latitude, longitude, userCreatorId,description,challenge, c
     		   "Tesouro do CICA", 
     		   "Qual o protocolo de VPN que o CICA utiliza para a VPN da FEUP?", 
     		   "l2tp");
+
+INSERT INTO user(id, email, token, name,admin, address) 
+    values(1972806272752741, "leogt-15@hotmail.com", "", "Leo Teixeira", 1, "");

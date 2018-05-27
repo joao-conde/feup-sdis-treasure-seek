@@ -45,8 +45,13 @@ public class LoadBalancer {
 	private ExecutorService threadPool;
 
 	public static void main(String[] args) throws IOException, ParseMessageException, JSONException {
-		System.out.println("---Load Balancer---");
+		if(Arrays.asList(args).indexOf("--help") != -1) {
+			System.out.println(usage());
+			System.exit(1);
+		}
+		
 		Utils.setSecurityProperties(false);
+		System.out.println("\nLoad Balancer running...\n");
 		new LoadBalancer();
 	}
 	
@@ -71,7 +76,9 @@ public class LoadBalancer {
 				if(socketIn.hasNextLine()) {
 					message = Message.parseMessage(socketIn.nextLine());
 				}
-														
+							
+				System.out.println("\n\n\n\n\n---------MESSAGE RECEIVED AT LOAD BALANCER---------\n\n" + message + "\n\n");
+
 				if(message != null)
 					reply = handleMessage(message);
 				
@@ -94,8 +101,7 @@ public class LoadBalancer {
 			JSONObject json = new JSONObject();
 			
 			Message.MessageType msgType = message.getHeader().getMessageType();
-			
-			System.out.println(message);
+						
 
 			switch (msgType) {
 
@@ -244,24 +250,9 @@ public class LoadBalancer {
 
 		return server;
 	}
+
 	
-	public static String bindParamenter(String[] args, String prefix, String alternative) {
-
-		String result = alternative;
-		int index = Arrays.asList(args).indexOf(prefix);
-		if(index != -1) {
-			try {
-				result = args[index + 1];				
-			} catch (ArrayIndexOutOfBoundsException e) {
-				usage();
-				System.exit(1);
-			}
-		}
-		
-		return result;
-	}
-
-	private static void usage() {
+	public static String usage() {
 		
 		ByteArrayOutputStream outBuffer = new ByteArrayOutputStream();
 		PrintWriter out = new PrintWriter(outBuffer);
@@ -273,7 +264,7 @@ public class LoadBalancer {
 		
 		out.close();
 		
-		System.out.println(outBuffer.toString());
+		return outBuffer.toString();
 		
 	}
 

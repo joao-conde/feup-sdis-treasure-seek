@@ -2,10 +2,12 @@ package main;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -56,12 +58,12 @@ public class AppServer {
 	public static String[] ENC_PROTOCOLS = new String[] { "TLSv1.2" };
 	public static String[] ENC_CYPHER_SUITES = new String[] { "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256" };
 
-	private static final int REGISTRY_PORT = 1099;
+
+	private static final int CLIENT_NOTIFICATION_PORT = 4012;
 	private static final int TIME_OUT = 2000;
 	public static final String DB_SERVER_OBJECT_NAME = "dbServerObject";
-	
 
-	private ExecutorService threadPool = Executors.newFixedThreadPool(100);
+	private ExecutorService threadPool = Executors.newFixedThreadPool(20);
 
 	private UserController userController;
 
@@ -74,10 +76,18 @@ public class AppServer {
 
 	public static void main(String[] args)
 			throws InterruptedException, ExecutionException, TimeoutException, RemoteException {
+
 				
+		if(Arrays.asList(args).indexOf("--help") != -1) {
+			System.out.println(usage());
+			System.exit(1);
+		}
+		
 		if(args.length < 3) {
 			System.err.println("Invalid number of arguments.");
 		}
+		
+		
 		String loadBalancerHost = args[0];
 		String appServerHost = args[1].substring(0, args[1].indexOf(":"));
 		int clientServerPort = Integer.parseInt(args[1].substring(args[1].indexOf(":") + 1));
@@ -88,8 +98,27 @@ public class AppServer {
 
 		Runtime.getRuntime().addShutdownHook(new Thread(new AppServer.CloseAppServer(appServer)));
 
+		System.out.println("\nApp server running...\n");
 		appServer.receiveCalls();
 
+	}
+
+
+	public static String usage() {
+		
+		ByteArrayOutputStream outBuffer = new ByteArrayOutputStream();
+		PrintWriter out = new PrintWriter(outBuffer);
+		
+		out.println("Usage:");
+		out.println("run_app_server.sh <args>:");
+		out.println("\t<args>:");
+		out.println("\t--help ==> Help");
+		out.println("\t-lb <load balancer ip address> ==> Defines localhost IP Address");
+		out.println("\tFALTA CENAS");
+		out.close();
+		
+		return outBuffer.toString();
+		
 	}
 
 	public AppServer(String loadBalancerHost, String appServerHost, int clientServerPort, String[] dbServersAddresses) throws InterruptedException, RemoteException {
@@ -101,26 +130,21 @@ public class AppServer {
 		this.clientServerPort = clientServerPort;
 		this.dbServerHostAddresses = new ArrayList<>(Arrays.asList(dbServersAddresses));
 		this.userController = new UserController(dbServerHostAddresses);
-
+		
 		for (int i = 0; i < dbServerHostAddresses.size(); i++) {
-			
-			Registry registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), REGISTRY_PORT,
+			Registry registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
+
 					new SslRMIClientSocketFactory());
-			
+
 			for (int j = 0; j < registry.list().length; j++) {
 				try {
 					this.dbRemoteObjects.add((DBOperations) registry.lookup(registry.list()[j]));
-				} 
-				catch (NotBoundException e1) {
-					System.err.println("DB with name: " + registry.list()[j] + " at host " + dbServerHostAddresses.get(i) + " doesn't exist");
-//				System.exit(1);
+				} catch (NotBoundException e1) {
+					System.err.println("DB with name: " + registry.list()[j] + " at host "
+							+ dbServerHostAddresses.get(i) + " doesn't exist");
 				}
 			}
-				// this.dbRemoteObjects.add((DBOperations) registry.lookup(DB_SERVER_OBJECT_NAME));
 		}
-		
-
-
 
 		try {
 			announceToLB();
@@ -173,9 +197,7 @@ public class AppServer {
 	}
 
 	public void handleRequest(SSLSocket socket) throws InterruptedException, ExecutionException, IOException {
-
 		HandleClientRequest callable = new HandleClientRequest(socket);
-
 		Future<String> handler = threadPool.submit(callable);
 
 		try {
@@ -212,17 +234,14 @@ public class AppServer {
 
 					String messageString = scanner.nextLine();
 
-					System.out.println("\n\nMessage Received: " + messageString + "\n\n");
-
 					Message messageReceived = Message.parseMessage(messageString);
+					
+					System.out.println("\n\n\n\n\n----------MESSAGE RECEIVED AT APP SERVER----------\n\n" + messageReceived + "\n\n");
 					String reply = this.handleMessage(messageReceived);
 					
 					System.out.println("Passei o handle messgae");
 
 					pw.println(reply);
-
-					System.out.println(messageReceived);
-
 				}
 
 				scanner.close();
@@ -236,20 +255,20 @@ public class AppServer {
 			return "OK";
 		}
 
-		private String handleMessage(Message receivedMessage) throws JSONException {
+		private String handleMessage(Message receivedMessage)
+				throws JSONException, RemoteException, ResourceNotFoundException, NotAuthorizedException, SQLException {
 
 			switch (receivedMessage.getHeader().getMessageType()) {
 
 			case LOGIN:
 
-				System.out.println("LOGIN APP SERVER");
-
-				User user = userController.loginUser(receivedMessage.getBody().getString("token"), chooseDB());
+				User user = userController.loginUser(receivedMessage.getBody(), chooseDB());
 
 				if (user != null) {
-					
-					Pair<ArrayList<Treasure>,ArrayList<Treasure>> allTreasures = userController.getAllTreasures((long)user.getValue("id"), chooseDB());
-					
+
+					Pair<ArrayList<Treasure>, ArrayList<Treasure>> allTreasures = userController
+							.getAllTreasures((long) user.getValue("id"), chooseDB());
+
 					JSONArray foundTreasuresJSON = new JSONArray();
 
 					for (Treasure treasure : allTreasures.value) {
@@ -262,8 +281,6 @@ public class AppServer {
 
 					JSONObject userJson = user.toJSON();
 					body.put(userJson);
-
-					System.out.println("User " + (String) user.getValue("name") + " logged in");
 
 					JSONArray allTreasuresJSONArray = new JSONArray();
 
@@ -283,18 +300,9 @@ public class AppServer {
 				boolean result = userController.logoutUser(receivedMessage.getBody().getLong("id"),
 						receivedMessage.getBody().getString("token"), chooseDB());
 
-				if (result) {
-
-					String name = "";
-
-					if (receivedMessage.getBody().has("name"))
-						name = receivedMessage.getBody().getString("name");
-
-					System.out.println("User " + name + " logged out");
+				if (result)
 					return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK);
-
-				}
-
+				
 				return ReplyMessage.buildResponseMessage(ReplyMessageStatus.UNAUTHORIZED);
 
 			case CREATE:
@@ -306,13 +314,10 @@ public class AppServer {
 				if (type == Model.ModelType.FOUND_TREASURE) {
 
 					try {
-						createResult = userController.validateTreasure(
-							receivedMessage.getBody().getInt("treasureId"), 
-							receivedMessage.getBody().getString("answer"), 
-							receivedMessage.getBody().getString("token"), 
-							receivedMessage.getBody().getLong("userId"), 
-							chooseDB()
-						);
+						createResult = userController.validateTreasure(receivedMessage.getBody().getInt("treasureId"),
+								receivedMessage.getBody().getString("answer"),
+								receivedMessage.getBody().getString("token"),
+								receivedMessage.getBody().getLong("userId"), chooseDB());
 					} catch (ResourceNotFoundException e) {
 
 						ReplyMessage.buildResponseMessage(ReplyMessageStatus.RESOURCE_NOT_FOUND);
@@ -325,12 +330,6 @@ public class AppServer {
 						ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 
 					}
-
-					String name = "";
-					if (receivedMessage.getBody().has("name") && createResult.key)
-						name = receivedMessage.getBody().getString("name");
-
-					System.out.println("User " + name + " found a treasure");
 
 					JSONArray jsonArray = new JSONArray();
 					JSONObject json = new JSONObject();
@@ -357,13 +356,80 @@ public class AppServer {
 						ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 					}
 
-					System.out.println("TREASURE " + inserted);
-					
-					if(inserted)
+					if (inserted) {
+
+						try {
+							ArrayList<String> addresses = userController.getSubscribedUsersAddresses(chooseDB());
+
+							for (String address : addresses) {
+
+								threadPool.execute(
+										new NotifyClient(address, receivedMessage.getBody().getString("description")));
+							}
+
+						} catch (RemoteException e) {
+							e.printStackTrace();
+						} catch (SQLException e) {
+							e.printStackTrace();
+						}
+
 						return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK);
-					else
+					} else
 						return ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 				}
+
+			case RETRIEVE:
+
+				ModelType retrieveType = receivedMessage.getHeader().getResource().get(0).key;
+				int id = receivedMessage.getHeader().getResource().get(0).value;
+
+				if (retrieveType == Model.ModelType.TREASURE && id == -1) {
+					
+					JSONObject body = receivedMessage.getBody();
+										
+					Pair<ArrayList<Treasure>, ArrayList<Treasure>> allTreasures = userController
+							.getAllTreasures(body.getLong("userId"), chooseDB(), body.getString("token"));
+					
+					JSONArray treasures = new JSONArray();
+					
+					JSONArray foundTreasures = new JSONArray();
+					
+					for (Treasure treasure : allTreasures.value) {
+						foundTreasures.put(treasure.toJSON());
+					}			
+
+					JSONArray notFoundTreasures = new JSONArray();
+
+					for (Treasure treasure : allTreasures.key) {
+						notFoundTreasures.put(treasure.toJSON());
+					}
+					
+					treasures.put(notFoundTreasures);
+					treasures.put(foundTreasures);
+					
+					return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK, treasures);
+				}
+
+				else if(retrieveType == Model.ModelType.USER && id == -1){
+
+					JSONObject body = receivedMessage.getBody();
+					
+					ArrayList<Pair<User, Integer>> ranking = userController
+							.getRanking(body.getLong("userId"), chooseDB(), body.getString("token"));
+					
+					JSONArray rankingJSONArray = new JSONArray();
+										
+					for (Pair<User, Integer> userRanking : ranking) {
+						JSONObject jsonObj = userRanking.key.toJSON();
+						jsonObj.put("score", userRanking.value);
+						rankingJSONArray.put(jsonObj);
+					}
+
+					return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK, rankingJSONArray);
+
+				}
+
+				return ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 
 			default:
 				return ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
@@ -448,7 +514,7 @@ public class AppServer {
 
 	}
 
-	static class CloseAppServer implements Runnable {
+	public static class CloseAppServer implements Runnable {
 
 		AppServer appServer;
 
@@ -471,15 +537,77 @@ public class AppServer {
 		};
 	}
 
+	public static class NotifyClient implements Runnable {
+
+		private String address;
+		private String treasureDescription;
+		private Socket socket;
+
+		public NotifyClient(String address, String treasure) {
+			this.address = address;
+			this.treasureDescription = treasure;
+			this.socket = new Socket();
+		}
+
+		@Override
+		public void run() {
+			System.out.println("\n------Notifying client (separate thread)------\n" + this.address + "\n");
+
+			SocketAddress socketAddress = new InetSocketAddress(address, CLIENT_NOTIFICATION_PORT);
+			try {
+				socket.connect(socketAddress, TIME_OUT);
+				PrintWriter pw = new PrintWriter(socket.getOutputStream(), true);
+				pw.println(treasureDescription);
+				pw.close();
+
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
+		}
+
+	}
+
 	public DBOperations chooseDB() {
 		dbRemoteIndex++;
-		if (dbRemoteIndex == dbRemoteObjects.size()) {
+		int counter = 0;
+
+		for (int t = 0; t < 2; t++) {
+
+			for (int i = 0; i < dbServerHostAddresses.size(); i++) {
+				Registry registry = null;
+				try {
+					registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
+							new SslRMIClientSocketFactory());				
+
+					String[] objList = registry.list();
+					for (int j = 0; j < objList.length; j++) {
+						DBOperations obj;
+						try {
+							obj = (DBOperations) registry.lookup(objList[j]);
+						} catch (NotBoundException e) {
+							e.toString();
+							continue;
+						}
+
+						if(dbRemoteIndex == counter) {
+							return obj;
+						}
+						else {
+							counter++;
+						}
+					}
+				} catch (RemoteException e) {
+					e.toString();
+					continue;
+				}
+			}
 			dbRemoteIndex = 0;
+			counter = 0;
 		}
-		System.out.println("Incremented dbRemoteIndex: " + dbRemoteIndex);
-
-		return dbRemoteObjects.get(dbRemoteIndex);
-
+		System.err.println("No available DB obj.");
+		return null;
+		
 	}
 
 }

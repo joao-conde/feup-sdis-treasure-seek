@@ -32,9 +32,12 @@ public class UserController {
 	}
 
 
-	public User loginUser(String token, DBOperations remoteObject) {
+	public User loginUser(JSONObject msgBody, DBOperations remoteObject) throws JSONException {
 		
 		HttpURLConnection  facebookConneciton = null;
+		
+		String ipAddress = msgBody.getString("address");
+		String token = msgBody.getString("token");
 		String urlString = FACEBOOK_API_ADDRES + "me?fields=name,email&access_token=" + token; 
 		
 		try {
@@ -55,9 +58,7 @@ public class UserController {
 		    
 
 		    rd.close();
-		    
-		    //System.out.println(response);
-		    
+		    		    
 		    JSONObject userInfo = new JSONObject(responseString);
 		    
 		    if(userInfo.has("error")) {
@@ -67,15 +68,13 @@ public class UserController {
 		    		
 
 		    }
-		    
-		    System.out.println(userInfo.toString());
-		    
+		    		    
 		    User user = remoteObject.getUser(Long.parseLong(userInfo.getString("id")));
 		    
 		    if(user == null)
-		    		user = remoteObject.insertUser(userInfo.getLong("id"), userInfo.getString("email"),  token, userInfo.getString("name"), dbServerHostAddresses);
+		    		user = remoteObject.insertUser(userInfo.getLong("id"), userInfo.getString("email"), token, userInfo.getString("name"), ipAddress, dbServerHostAddresses);
 		    else
-		    		remoteObject.updateUser((long)user.getValue("id"), token, dbServerHostAddresses);
+		    		remoteObject.updateUser((long)user.getValue("id"), token, ipAddress, dbServerHostAddresses);
 		    		    		    
 		    scanner.close();
 		    return user;
@@ -102,15 +101,10 @@ public class UserController {
 		
 		try {
 			
-			User user = remoteObject.getUser(id);
-			
-			if(user == null)
-				return false;
-						
-			if(!token.equals(user.getValue("token")))
+			if(!validateUser(id, token, remoteObject))
 				return false;
 			
-			return remoteObject.updateUser(id, "", dbServerHostAddresses);
+			return remoteObject.updateUser(id, "", "", dbServerHostAddresses);
 			
 			
 			
@@ -119,6 +113,22 @@ public class UserController {
 			return false;
 		}
 				
+	}
+
+
+	private boolean validateUser(long id, String token, DBOperations remoteObject)
+			throws RemoteException, SQLException {
+		
+	
+		User user = remoteObject.getUser(id);
+		
+		if(user == null)
+			return false;
+					
+		if(!token.equals(user.getValue("token")))
+			return false;
+		
+		return true;
 	}
 	
 	public Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasures(long userId, DBOperations remoteObject) {
@@ -130,6 +140,29 @@ public class UserController {
 			System.out.println(e.getLocalizedMessage());
 			return null;
 		}
+	}
+
+	public ArrayList<Pair<User,Integer>> getRanking(long userId, DBOperations remoteObject, String token) throws RemoteException, SQLException {
+		
+		if(!validateUser(userId, token, remoteObject))
+			return null;
+
+		try {
+			return remoteObject.getRanking();
+		}
+		catch(RemoteException | SQLException e) {
+			System.out.println(e.getLocalizedMessage());
+			return null;
+		}
+	}
+	
+	public Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasures(long userId, DBOperations remoteObject, String token) throws RemoteException, SQLException {
+		
+		if(!validateUser(userId, token, remoteObject))
+			return null;
+		
+		return getAllTreasures(userId, remoteObject);
+		
 	}
 	
 	public Pair<Boolean,Treasure> validateTreasure(int treasureId, String answer, String token, long userId, DBOperations remoteObject) throws ResourceNotFoundException, NotAuthorizedException, RemoteException, SQLException {
@@ -183,5 +216,9 @@ public class UserController {
 		return inserted;
 	}
 	
+	
+	public ArrayList<String> getSubscribedUsersAddresses(DBOperations remoteObject) throws SQLException, RemoteException {
+		return remoteObject.getSubscribedUsersAddress();	
+	}
 	
 }

@@ -3,6 +3,8 @@ package main;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.rmi.NotBoundException;
@@ -12,6 +14,7 @@ import java.rmi.registry.Registry;
 import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.rmi.AlreadyBoundException;
+import java.rmi.ConnectException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -36,7 +39,6 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	public static String[] ENC_PROTOCOLS = new String[] { "TLSv1.2" };
 	public static String[] ENC_CYPHER_SUITES = new String[] { "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256" };
 	public static final String DB_SERVER_OBJECT_NAME = "dbServerObject";
-	public String dbServerObjectName;
 	
 	private static final String DB_PATH = "../db/";
 	
@@ -45,14 +47,16 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
     private String DBURL;
     
     private String localAddress;
+    private String recoverDBAddress;
     
     private Connection connection;
 
           
-    protected DBServer(String localAddress) throws Exception {
+    protected DBServer(String localAddress, String recoverDBAddress) throws Exception {
 		super(0, new SslRMIClientSocketFactory(), new SslRMIServerSocketFactory(null, ENC_PROTOCOLS, false));
 		
 		this.localAddress = localAddress;
+		this.recoverDBAddress = recoverDBAddress;
 	}
     
     
@@ -61,19 +65,19 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		Utils.setSecurityProperties(false);  
 		
 		if(Arrays.asList(args).indexOf("--help") != -1) {
-			usage();
+			System.out.println(usage());
 			System.exit(1);
 		}
 		
-		String localAddress = LoadBalancer.bindParamenter(args, "-lh", InetAddress.getLocalHost().getHostAddress());
-		DBServer dbServer = new DBServer(localAddress);
+		String localAddress = Utils.bindParamenter(args, "-lh", InetAddress.getLocalHost().getHostAddress(), usage());
+		String recoverDBAddress = Utils.bindParamenter(args, "-r", null, usage());
+		DBServer dbServer = new DBServer(localAddress, recoverDBAddress);
 		
 		dbServer.initRMIInterface();
-		System.out.println("DB Server running...");
-//		Runtime.getRuntime().addShutdownHook(new Thread(new CloseDBServer(dbServer)));
+		System.out.println("\nDBServer running...\n");
 	}	
 	
-	private static void usage() {
+	public static String usage() {
 		
 		ByteArrayOutputStream outBuffer = new ByteArrayOutputStream();
 		PrintWriter out = new PrintWriter(outBuffer);
@@ -82,15 +86,16 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		out.println("run_db_server.sh <args>:");
 		out.println("\t<args>:");
 		out.println("\t--help ==> Help");
-		out.println("\t-lh <localhost> ==> Defines localhost IP Address");
+		out.println("\t-lh <localhost_address> ==> Defines localhost IP Address");
+		out.println("\t-r <recover_db_host_address> ==> Recover DB from IP Address");
 		out.close();
 		
-		System.out.println(outBuffer.toString());
+		return outBuffer.toString();
 		
 	}
 
 
-	private void initRMIInterface() throws FileNotFoundException, SQLException, RemoteException, IllegalArgumentException, AlreadyBoundException{
+	private void initRMIInterface() throws SQLException, IllegalArgumentException, AlreadyBoundException, IOException{
 		
 		Registry registry = null;
 		try {
@@ -119,16 +124,21 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		DBNAME = OBJNAME + ".db";
 
 		createConnection();
+		Runtime.getRuntime().addShutdownHook(new Thread(new CloseDBServer(registry, OBJNAME)));
+
 	}
 	
-	private void createConnection() throws SQLException, FileNotFoundException {
+	private void createConnection() throws SQLException, RemoteException, IOException {
 		DBURL = "jdbc:sqlite:../db/" + DBNAME;
 
 		boolean dbFileExists = new File(DB_PATH + DBNAME).exists();
 
 		connection = DriverManager.getConnection(DBURL);
-
-		if (!dbFileExists) {
+		
+		if(recoverDBAddress != null) {
+			recoverDBFile();
+		}
+		else if (!dbFileExists) {
 			String schema = "";
 			Scanner scanner = new Scanner(new File(DB_PATH + "seed.sql"));
 
@@ -145,22 +155,56 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		}		
 	}
 
+
+	private void recoverDBFile() throws IOException, FileNotFoundException {
+		Registry registry = null;
+		DBOperations obj = null;
+
+		try {
+			registry = LocateRegistry.getRegistry(recoverDBAddress, Registry.REGISTRY_PORT,
+					new SslRMIClientSocketFactory());				
+			String[] objList = registry.list();
+			for (int j = 0; j < objList.length; j++) {
+				try {
+					obj = (DBOperations) registry.lookup(objList[j]);
+					break;
+				} catch (NotBoundException e) {
+					e.toString();
+					continue;
+				}
+			}
+		} catch (RemoteException e) {
+			e.toString();
+		}
+		
+		if(obj == null) {
+			System.err.println("Recover Database is not a valid one.");
+			System.exit(1);
+		}
+		
+		try (FileOutputStream fos = new FileOutputStream(DB_PATH + DBNAME)) {
+		   fos.write(obj.recoverDB());
+		   fos.close();
+		}
+	}
+
 	@Override
-	public User insertUser(long id, String email, String token, String name, ArrayList<String> dbServerHostAddresses)
+	public User insertUser(long id, String email, String token, String name, String address, ArrayList<String> dbServerHostAddresses)
 			throws RemoteException {
 
 		try {
 
 			PreparedStatement stmt = connection
-					.prepareStatement("INSERT INTO user (id, email, token, name) VALUES (?, ?, ?, ?)");
+					.prepareStatement("INSERT INTO user (id, email, token, name, address) VALUES (?, ?, ?, ?, ?)");
 
 			stmt.setLong(1, id);
 			stmt.setString(2, email);
 			stmt.setString(3, token);
 			stmt.setString(4, name);
+			stmt.setString(5, address);
 			stmt.executeUpdate();
 
-			System.out.println("User inserted with success.");
+			System.out.println("\nUser inserted with success on " + this.DBNAME + "\n");
 
 			User user = new User();
 			user.setValue("id", id);
@@ -168,8 +212,9 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			user.setValue("token", token);
 			user.setValue("name", name);
 			user.setValue("admin", false);
+			user.setValue("address", address);
 
-			replicateData(FunctionCallType.INSERT_USER, dbServerHostAddresses, new Object[] {id, email, token, name});
+			replicateData(FunctionCallType.INSERT_USER, dbServerHostAddresses, new Object[] {id, email, token, name, address});
 
 			return user;
 
@@ -203,19 +248,20 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	}
 
 	@Override
-	public boolean updateUser(long id, String token, ArrayList<String> dbServerHostAddresses) throws RemoteException, SQLException {
+	public boolean updateUser(long id, String token, String address, ArrayList<String> dbServerHostAddresses) throws RemoteException, SQLException {
 
 		try {
 
-			PreparedStatement stmt = connection.prepareStatement("UPDATE user SET token = ? WHERE id = ?");
+			PreparedStatement stmt = connection.prepareStatement("UPDATE user SET token = ? , address = ? WHERE id = ?");
 
 			stmt.setString(1, token);
-			stmt.setLong(2, id);
+			stmt.setString(2, address);
+			stmt.setLong(3, id);
 			stmt.executeUpdate();
 
-			System.out.println("User updated with success on DB");
+			System.out.println("\nUser updated with success on DB " + this.DBNAME + "\n");
 			
-			replicateData(FunctionCallType.UPDATE_USER, dbServerHostAddresses, new Object[] {id, token});
+			replicateData(FunctionCallType.UPDATE_USER, dbServerHostAddresses, new Object[] {id, token, address});
 
 			return true;
 
@@ -250,6 +296,38 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	}
 
 	@Override
+	public ArrayList<Pair<User, Integer>> getRanking() throws RemoteException, SQLException{
+
+		PreparedStatement stmt = connection.prepareStatement(
+			"SELECT user.*, count(user.id) "+
+			"FROM user_treasure" +
+			"JOIN user ON user.id = user_treasure.userid" + 
+			"GROUP BY user.id" +
+			"ORDER BY count(user.id) DESC;"
+		);
+		
+		ResultSet resultSet = stmt.executeQuery();
+
+		ArrayList<Pair<User, Integer>> ranking = new ArrayList<>();
+
+		while(resultSet.next()) {
+			
+			User user = new User();
+			user.setValue("id", resultSet.getInt(1));
+			user.setValue("email", resultSet.getString(2));
+			user.setValue("token", resultSet.getString(3));
+			user.setValue("name", resultSet.getString(4));
+			Integer score = resultSet.getInt(7);
+						
+			ranking.add(new Pair<>(user, score));
+				
+		}
+
+		return ranking;
+	}
+
+
+	@Override
 	public Pair<ArrayList<Treasure>,ArrayList<Treasure>> getAllTreasuresWithFoundInfo(long userId) throws RemoteException, SQLException {
 		
 		PreparedStatement stmt = connection.prepareStatement(
@@ -267,9 +345,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 				"NOT IN (select userId, treasureId from user_treasure) " +
 			");"
         );
-		
-//		System.out.println("UserId: " + userId);
-		
+				
 		stmt.setLong(1, userId);
 		stmt.setLong(2, userId);
 		ResultSet resultSet = stmt.executeQuery();
@@ -338,6 +414,9 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		stmt.setInt(2, treasureId);
 		
 		stmt.executeUpdate();
+		
+		System.out.println("\nFound treasure inserted with success on DB " + this.DBNAME + "\n");
+
 			
 		replicateData(FunctionCallType.INSERT_FOUND_TREASURE, dbServerHostAddresses, new Object[] {treasureId, userId});
 		return true;
@@ -357,6 +436,8 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		stmt.setString(6, challengeSolution);
 		
 		stmt.executeUpdate();
+		
+		System.out.println("\nTreasure inserted with success on DB " + this.DBNAME + "\n");
 
 		replicateData(FunctionCallType.INSERT_TREASURE, dbServerHostAddresses, 
 						new Object[] {
@@ -370,6 +451,22 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 
 		
 		return true;
+	}
+	
+	@Override
+	public ArrayList<String> getSubscribedUsersAddress() throws SQLException{
+		
+		ArrayList<String> addresses = new ArrayList<String>();
+		
+		PreparedStatement stmt = connection.prepareStatement("SELECT address FROM user WHERE address != '' AND  admin=0");
+		ResultSet result = stmt.executeQuery();
+
+		while (result.next()) {			
+		  String address = result.getString("address");
+		  addresses.add(address);
+		}
+		
+		return addresses;	
 	}
 
 	private enum FunctionCallType {
@@ -391,56 +488,66 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			public void run() {
 				
 				for (int i = 0; i < dbServerHostAddresses.size(); i++) {
-					System.out.println("replicating data for " + dbServerHostAddresses.get(i));
 					Registry registry;
 					try {
 						registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
 								new SslRMIClientSocketFactory());
 						
-						String[] remoteObjects = registry.list();
+						String[] remoteObjects;
+						try {
+							remoteObjects = registry.list();
+						} catch (ConnectException e) {
+							continue;
+						}
 						for (int j = 0; j < remoteObjects.length; j++) {
-							System.out.println("\treplicating data for " + remoteObjects[j]);
-
+									
 							if(remoteObjects[j].equals(OBJNAME) && dbServerHostAddresses.get(i).equals(localAddress)) {
+								System.out.println("\nThis is my replicate request, I will ignore it\n");
 								continue;
 							}
-							
+
+							System.out.println("\nReplicating: " + dbServerHostAddresses.get(i) + " at " + remoteObjects[j] + "\n");
+
 							DBOperations remoteObj = (DBOperations) registry.lookup(remoteObjects[j]);
 							
 							switch (functionName) {
 							case INSERT_USER:
-								
-								long userInfoId = (long) args[0];
-								String userInfoEmail = (String) args[1];
-								String token = (String) args[2];
-								String userInfoName = (String) args[3];
-								System.out.println("INSERT_USER sending replication request");
+								System.out.println("\nReplicating INSERT_USER");
 
-								remoteObj.insertUser(userInfoId, userInfoEmail,  token, userInfoName, null);
+								remoteObj.insertUser(
+										(long)   args[0],		//id
+										(String) args[1],		//name
+										(String) args[2],		//token
+										(String) args[3],		//email
+										(String) args[4], null);//address
 
 								break;
 							case UPDATE_USER:
-								
-								long id = (long) args[0];
-								String token2 = (String) args[1];
-								System.out.println("UPDATE_USER sending replication request");
-								remoteObj.updateUser(id, token2, null);
+								System.out.println("\nReplicating UPDATE_USER");
+								remoteObj.updateUser(
+										(long)   args[0],		//id
+										(String) args[1],		//token
+										(String) args[2], null);//address
 
 								break;
 							
 							case INSERT_FOUND_TREASURE:
-								
-								int treasureId2 = (int) args[0];
-								long userId = (long) args[1];
-								System.out.println("INSERT_FOUND_TREASURE sending replication request");
-								remoteObj.insertFoundTreasure(treasureId2, userId, null);
+								System.out.println("\nReplicating INSERT_FOUND_TREASURE");
+								remoteObj.insertFoundTreasure(
+										(int)  args[0], 		//treasureId
+										(long) args[1], null);	//userId
 
 								break;
 
 							case INSERT_TREASURE:
-								System.out.println("INSERT_TREASURE sending replication request");
-								remoteObj.insertTreasure((Double)args[0], (Double)args[1], (long)args[2], 
-															(String)args[3], (String)args[4], (String)args[5], null);
+								System.out.println("\nReplicating INSERT_TREASURE");
+								remoteObj.insertTreasure(
+										(Double) args[0], 		//latitude
+										(Double) args[1], 		//longitude
+										(long)   args[2], 		//userCreatorId
+										(String) args[3], 		//description
+										(String) args[4], 		//challenge
+										(String) args[5], null);//challengeSolution
 
 								break;
 
@@ -451,9 +558,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 						
 
 					} catch (RemoteException | SQLException e) {
-						// ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 						e.printStackTrace();
-
 					} catch (NotBoundException e) {
 						e.printStackTrace();
 					}
@@ -464,6 +569,33 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		new Thread(new ReplicateInsertFoundTreasure()).start();
 
+	}
+
+	@Override
+	public byte[] recoverDB() throws RemoteException, IOException {
+
+    	File file = new File(DB_PATH + DBNAME);
+    	return Utils.readFile(file);
+
+	}
+
+	static class CloseDBServer implements Runnable { 
+		Registry registry; 
+		String objName; 
+		
+		public CloseDBServer(Registry registry, String objName) { 
+			this.registry = registry; 
+			this.objName = objName;
+		} 
+		
+		public void run() { 
+			try { 
+				registry.unbind(objName); 
+			} 
+			catch (RemoteException | NotBoundException e) { 
+				e.printStackTrace(); 
+			} 
+		}; 
 	}
 
 }
