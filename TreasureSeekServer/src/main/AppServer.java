@@ -548,7 +548,7 @@ public class AppServer {
 
 		@Override
 		public void run() {
-			System.out.println("Notifying client: " + this.address);
+			System.out.println("\n------Notifying client (separate thread)------\n" + this.address + "\n");
 
 			SocketAddress socketAddress = new InetSocketAddress(address, CLIENT_NOTIFICATION_PORT);
 			try {
