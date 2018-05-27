@@ -14,7 +14,7 @@ import sdis.util.ParseMessageException;
 
 public class ServerMessage {
 
-    public static enum ReplyMessageStatus {
+    public enum ReplyMessageStatus {
 
         OK("OK"),
         UNAUTHORIZED("UNAUTHORIZED"),

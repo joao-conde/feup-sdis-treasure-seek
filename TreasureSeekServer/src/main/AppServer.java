@@ -60,7 +60,7 @@ public class AppServer {
 
 
 	private static final int CLIENT_NOTIFICATION_PORT = 4012;
-	private static final int TIME_OUT = 2000;
+	private static final int TIME_OUT = 4000;
 	public static final String DB_SERVER_OBJECT_NAME = "dbServerObject";
 
 	private ExecutorService threadPool = Executors.newFixedThreadPool(20);
@@ -113,7 +113,7 @@ public class AppServer {
 		out.println("run_app_server.sh <args>:");
 		out.println("\t<args>:");
 		out.println("\t--help ==> Help");
-		out.println("\t-lb <load balancer ip address> ==> Defines localhost IP Address");
+		out.println("\t-lb <load balancer ip address> ==> Defines loadbalancer IP Address");
 		out.println("\tFALTA CENAS");
 		out.close();
 		

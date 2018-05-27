@@ -1,7 +1,11 @@
 package communications;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Scanner;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -64,5 +68,68 @@ public class ReplyMessage {
 		return ReplyMessageStatus.type(raw);
 		
 	}
+	
+	private ReplyMessageStatus status;
+    private JSONArray body;
+
+    public ReplyMessage(ReplyMessageStatus status) {
+        this.status = status;
+    }
+
+    private void setBody(JSONArray body) {
+        this.body = body;
+    }
+
+
+    public ReplyMessageStatus getStatus() {
+        return status;
+    }
+
+    public JSONArray getBody() {
+        return body;
+    }
+
+    public static ReplyMessage parseServerMessage(String raw) throws ParseMessageException, JSONException {
+
+        Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(new ByteArrayInputStream(raw.getBytes()))));
+
+        if(!scanner.hasNext()) {
+        	
+        		scanner.close();
+        	 	throw new ParseMessageException("No message status");
+        }
+           
+
+        ReplyMessage message = new ReplyMessage(ReplyMessageStatus.type(scanner.next()));
+
+        if(scanner.hasNextLine())
+            message.setBody(new JSONArray(scanner.nextLine()));
+
+        scanner.close();
+
+        return message;
+
+    }
+
+    @Override
+    public String toString() {
+
+        String res = "";
+
+        res += "\nMessage Header:";
+        res += ("\n\tMessage Type: " + this.getStatus());
+
+        res += "\nMessage Body: \n";
+
+        if(this.body == null)
+            res += "\tNo body";
+        else
+            res += "\t" + this.body.toString();
+
+        return res;
+
+    }
+	
+	
 	
 }

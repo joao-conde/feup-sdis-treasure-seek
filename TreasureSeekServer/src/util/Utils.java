@@ -1,12 +1,21 @@
 package util;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.io.Serializable;
+import java.net.Socket;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Scanner;
+
+import org.json.JSONException;
+
+import communications.ReplyMessage;
 
 
 public class Utils {
@@ -36,6 +45,8 @@ public class Utils {
 		}
 
 	}
+
+	private static final int TIME_OUT = 4000;
 
 	public static void setSecurityProperties(boolean debugEclipse) {
 		
@@ -86,4 +97,22 @@ public class Utils {
         }
         return buffer;
     }
+    
+    public static ReplyMessage sendMessage(String message, Socket socket) throws IOException, ParseMessageException, JSONException {
+		
+		PrintWriter pw = new PrintWriter(socket.getOutputStream(), true);
+        Scanner scanner = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream())));
+        ReplyMessage response = null;
+        
+        pw.println(message);
+        socket.setSoTimeout(TIME_OUT);
+        
+        if(scanner.hasNextLine())
+            response = ReplyMessage.parseServerMessage(scanner.nextLine());
+        
+        scanner.close();
+        pw.close();
+        return response;
+		
+	}
 }

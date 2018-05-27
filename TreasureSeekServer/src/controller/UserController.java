@@ -38,7 +38,7 @@ public class UserController {
 		
 		String ipAddress = msgBody.getString("address");
 		String token = msgBody.getString("token");
-		String urlString = FACEBOOK_API_ADDRES + "me?fields=name,email&access_token=" + token; 
+		String urlString = FACEBOOK_API_ADDRES + "me?fields=name,id,email&access_token=" + token; 
 		
 		try {
 		    //Create connection
@@ -50,7 +50,6 @@ public class UserController {
 		    //Get Response  
 		    InputStream is = facebookConneciton.getInputStream();
 		    BufferedReader rd = new BufferedReader(new InputStreamReader(is));
-		    //StringBuilder response = new StringBuilder(); // or StringBuffer if Java version 5+
 		    
 		    Scanner scanner = new Scanner(rd);
 		    
@@ -75,7 +74,9 @@ public class UserController {
 		    		user = remoteObject.insertUser(userInfo.getLong("id"), userInfo.getString("email"), token, userInfo.getString("name"), ipAddress, dbServerHostAddresses);
 		    else
 		    		remoteObject.updateUser((long)user.getValue("id"), token, ipAddress, dbServerHostAddresses);
-		    		    		    
+		    		    	
+		    System.out.println("Fb json: " + userInfo);
+		    
 		    scanner.close();
 		    return user;
 		    
