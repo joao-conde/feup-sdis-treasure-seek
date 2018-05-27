@@ -1,6 +1,7 @@
 package util;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -9,6 +10,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Scanner;
@@ -64,18 +66,83 @@ public class Utils {
 	
 	public static String bindParamenter(String[] args, String prefix, String alternative, String usage) {
 
-		String result = alternative;
 		int index = Arrays.asList(args).indexOf(prefix);
 		if(index != -1) {
 			try {
-				result = args[index + 1];				
+				if(args[index + 1].charAt(0) == '-') {
+					System.out.println(usage);
+					System.exit(1);
+				}
+				return args[index + 1];				
 			} catch (ArrayIndexOutOfBoundsException e) {
 				System.out.println(usage);
 				System.exit(1);
 			}
 		}
+		else if(alternative == null){
+			System.out.println(usage);
+			System.exit(1);
+		}
 		
-		return result;
+		return alternative;
+	}
+	
+	public static ArrayList<String> bindMultiParamenter(String[] args, String prefix, ArrayList<String> alternative, String usage) {
+		int index = Arrays.asList(args).indexOf(prefix);
+		
+		if(index != -1) {
+			ArrayList<String> result = new ArrayList<>();
+			try {
+				int i = 1;
+				while(args[index + i].charAt(0) != '-') {
+					result.add(args[index + i]);
+					System.out.println(args[index + i] + " added.");
+					i++;
+					
+				}
+				return result;				
+
+			} catch (ArrayIndexOutOfBoundsException e) {
+				if(result.size() == 0) {
+					System.out.println(usage);
+					System.exit(1);
+				}
+				else {
+					return result;
+				}
+			}
+		}
+		else if(alternative == null){
+			System.out.println(usage);
+			System.exit(1);
+		}
+		
+		return alternative;
+	}
+
+	public static String squaredFrame(Object object) {
+		
+		ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+		PrintWriter out = new PrintWriter(outStream);
+		
+		String text = object.toString();
+		out.print("\n +");
+		for (int i = 0; i < text.length() + 2; i++) {
+			out.print("-");
+		}
+		out.println("+");
+		
+		out.println(" | " + text + " |");
+		
+		out.print(" +");
+		for (int i = 0; i < text.length() + 2; i++) {
+			out.print("-");
+		}
+		out.println("+");
+		
+		out.close();
+		
+		return outStream.toString();
 	}
 
     public static byte[] readFile(File file) throws IOException{
