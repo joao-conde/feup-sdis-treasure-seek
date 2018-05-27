@@ -58,9 +58,7 @@ public class UserController {
 		    
 
 		    rd.close();
-		    
-		    //System.out.println(response);
-		    
+		    		    
 		    JSONObject userInfo = new JSONObject(responseString);
 		    
 		    if(userInfo.has("error")) {
@@ -70,9 +68,7 @@ public class UserController {
 		    		
 
 		    }
-		    
-		    System.out.println(userInfo.toString());
-		    
+		    		    
 		    User user = remoteObject.getUser(Long.parseLong(userInfo.getString("id")));
 		    
 		    if(user == null)
@@ -123,9 +119,7 @@ public class UserController {
 	private boolean validateUser(long id, String token, DBOperations remoteObject)
 			throws RemoteException, SQLException {
 		
-		System.out.println("REMOTEOBJ: " + remoteObject);
-		System.out.println("userID: " + id + "\ntoken: " + token);
-		
+	
 		User user = remoteObject.getUser(id);
 		
 		if(user == null)

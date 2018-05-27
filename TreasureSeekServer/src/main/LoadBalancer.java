@@ -50,8 +50,8 @@ public class LoadBalancer {
 			System.exit(1);
 		}
 		
-		System.out.println("---Load Balancer---");
 		Utils.setSecurityProperties(false);
+		System.out.println("\nLoad Balancer running...\n");
 		new LoadBalancer();
 	}
 	
@@ -76,7 +76,9 @@ public class LoadBalancer {
 				if(socketIn.hasNextLine()) {
 					message = Message.parseMessage(socketIn.nextLine());
 				}
-														
+							
+				System.out.println("\n\n\n\n\n---------MESSAGE RECEIVED AT LOAD BALANCER---------\n\n" + message + "\n\n");
+
 				if(message != null)
 					reply = handleMessage(message);
 				
@@ -99,8 +101,7 @@ public class LoadBalancer {
 			JSONObject json = new JSONObject();
 			
 			Message.MessageType msgType = message.getHeader().getMessageType();
-			
-			System.out.println(message);
+						
 
 			switch (msgType) {
 

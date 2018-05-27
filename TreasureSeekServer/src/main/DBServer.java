@@ -74,7 +74,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		DBServer dbServer = new DBServer(localAddress, recoverDBAddress);
 		
 		dbServer.initRMIInterface();
-		System.out.println("DB Server running...");
+		System.out.println("\nDBServer running...\n");
 	}	
 	
 	public static String usage() {
@@ -204,7 +204,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			stmt.setString(5, address);
 			stmt.executeUpdate();
 
-			System.out.println("User inserted with success on " + this.DBNAME);
+			System.out.println("\nUser inserted with success on " + this.DBNAME + "\n");
 
 			User user = new User();
 			user.setValue("id", id);
@@ -259,7 +259,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			stmt.setLong(3, id);
 			stmt.executeUpdate();
 
-			System.out.println("User updated with success on DB " + this.DBNAME);
+			System.out.println("\nUser updated with success on DB " + this.DBNAME + "\n");
 			
 			replicateData(FunctionCallType.UPDATE_USER, dbServerHostAddresses, new Object[] {id, token, address});
 
@@ -415,7 +415,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		stmt.executeUpdate();
 		
-		System.out.println("Found treasure inserted with success on DB");
+		System.out.println("\nFound treasure inserted with success on DB " + this.DBNAME + "\n");
 
 			
 		replicateData(FunctionCallType.INSERT_FOUND_TREASURE, dbServerHostAddresses, new Object[] {treasureId, userId});
@@ -437,7 +437,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		stmt.executeUpdate();
 		
-		System.out.println("Treasure inserted with success on DB");
+		System.out.println("\nTreasure inserted with success on DB " + this.DBNAME + "\n");
 
 		replicateData(FunctionCallType.INSERT_TREASURE, dbServerHostAddresses, 
 						new Object[] {
@@ -502,17 +502,17 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 						for (int j = 0; j < remoteObjects.length; j++) {
 									
 							if(remoteObjects[j].equals(OBJNAME) && dbServerHostAddresses.get(i).equals(localAddress)) {
-								System.out.println("This is my replicate request, I will ignore it");
+								System.out.println("\nThis is my replicate request, I will ignore it\n");
 								continue;
 							}
 
-							System.out.println("Replicating: " + dbServerHostAddresses.get(i) + " at " + remoteObjects[j]);
+							System.out.println("\nReplicating: " + dbServerHostAddresses.get(i) + " at " + remoteObjects[j] + "\n");
 
 							DBOperations remoteObj = (DBOperations) registry.lookup(remoteObjects[j]);
 							
 							switch (functionName) {
 							case INSERT_USER:
-								System.out.println("Replicating INSERT_USER");
+								System.out.println("\nReplicating INSERT_USER");
 
 								remoteObj.insertUser(
 										(long)   args[0],		//id
@@ -523,7 +523,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 
 								break;
 							case UPDATE_USER:
-								System.out.println("Replicating UPDATE_USER");
+								System.out.println("\nReplicating UPDATE_USER");
 								remoteObj.updateUser(
 										(long)   args[0],		//id
 										(String) args[1],		//token
@@ -532,7 +532,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 								break;
 							
 							case INSERT_FOUND_TREASURE:
-								System.out.println("Replicating INSERT_FOUND_TREASURE");
+								System.out.println("\nReplicating INSERT_FOUND_TREASURE");
 								remoteObj.insertFoundTreasure(
 										(int)  args[0], 		//treasureId
 										(long) args[1], null);	//userId
@@ -540,7 +540,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 								break;
 
 							case INSERT_TREASURE:
-								System.out.println("Replicating INSERT_TREASURE");
+								System.out.println("\nReplicating INSERT_TREASURE");
 								remoteObj.insertTreasure(
 										(Double) args[0], 		//latitude
 										(Double) args[1], 		//longitude

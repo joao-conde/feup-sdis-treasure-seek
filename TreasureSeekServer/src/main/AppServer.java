@@ -11,7 +11,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.rmi.ConnectException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -99,6 +98,7 @@ public class AppServer {
 
 		Runtime.getRuntime().addShutdownHook(new Thread(new AppServer.CloseAppServer(appServer)));
 
+		System.out.println("\nApp server running...\n");
 		appServer.receiveCalls();
 
 	}
@@ -234,16 +234,12 @@ public class AppServer {
 
 					String messageString = scanner.nextLine();
 
-					System.out.println("\n\nMessage Received: " + messageString + "\n\n");
-
 					Message messageReceived = Message.parseMessage(messageString);
 					
-					System.out.println(messageReceived);
+					System.out.println("\n\n\n\n\n----------MESSAGE RECEIVED AT APP SERVER----------\n\n" + messageReceived + "\n\n");
 					String reply = this.handleMessage(messageReceived);
 
 					pw.println(reply);
-
-
 				}
 
 				scanner.close();
@@ -301,17 +297,9 @@ public class AppServer {
 				boolean result = userController.logoutUser(receivedMessage.getBody().getLong("id"),
 						receivedMessage.getBody().getString("token"), chooseDB());
 
-				if (result) {
-
-					String name = "";
-
-					if (receivedMessage.getBody().has("name"))
-						name = receivedMessage.getBody().getString("name");
-
+				if (result)
 					return ReplyMessage.buildResponseMessage(ReplyMessageStatus.OK);
-
-				}
-
+				
 				return ReplyMessage.buildResponseMessage(ReplyMessageStatus.UNAUTHORIZED);
 
 			case CREATE:
@@ -339,10 +327,6 @@ public class AppServer {
 						ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 
 					}
-
-					String name = "";
-					if (receivedMessage.getBody().has("name") && createResult.key)
-						name = receivedMessage.getBody().getString("name");
 
 					JSONArray jsonArray = new JSONArray();
 					JSONObject json = new JSONObject();
@@ -381,10 +365,8 @@ public class AppServer {
 							}
 
 						} catch (RemoteException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						} catch (SQLException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
 
@@ -427,24 +409,16 @@ public class AppServer {
 
 				else if(retrieveType == Model.ModelType.USER && id == -1){
 
-					System.out.println("getting ranking");
-
 					JSONObject body = receivedMessage.getBody();
-
-					System.out.println("JSONOBJECT: " + body); 
 					
 					ArrayList<Pair<User, Integer>> ranking = userController
 							.getRanking(body.getLong("userId"), chooseDB(), body.getString("token"));
 					
 					JSONArray rankingJSONArray = new JSONArray();
-					
-					System.out.println("RANKING " + ranking);
-					
-					//TODO: check index out of range possible wrong json
+										
 					for (Pair<User, Integer> userRanking : ranking) {
 						JSONObject jsonObj = userRanking.key.toJSON();
 						jsonObj.put("score", userRanking.value);
-
 						rankingJSONArray.put(jsonObj);
 					}
 
@@ -596,19 +570,17 @@ public class AppServer {
 		int counter = 0;
 
 		for (int t = 0; t < 2; t++) {
-			System.out.println("chooseDB: " + dbRemoteIndex);
+
 			for (int i = 0; i < dbServerHostAddresses.size(); i++) {
 				Registry registry = null;
 				try {
-					System.out.println("getRegistry: " + dbServerHostAddresses.get(i));
 					registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
 							new SslRMIClientSocketFactory());				
-					System.out.println("registry.list(): " + dbServerHostAddresses.get(i));
+
 					String[] objList = registry.list();
 					for (int j = 0; j < objList.length; j++) {
 						DBOperations obj;
 						try {
-							System.out.println("registry.lookup: " + objList[j]);
 							obj = (DBOperations) registry.lookup(objList[j]);
 						} catch (NotBoundException e) {
 							e.toString();
