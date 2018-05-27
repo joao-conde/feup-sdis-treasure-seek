@@ -71,7 +71,7 @@ public class AppServer {
 	private String appServerHost;
 	public int clientServerPort;
 	private ArrayList<String> dbServerHostAddresses = new ArrayList<>();
-	private ArrayList<DBOperations> dbRemoteObjects = new ArrayList<>();
+//	private ArrayList<DBOperations> dbRemoteObjects = new ArrayList<>();
 	public int dbRemoteIndex = -1;
 
 	public static void main(String[] args)
@@ -87,18 +87,25 @@ public class AppServer {
 			System.err.println("Invalid number of arguments.");
 		}
 		
+		Utils.bindParamenter(args, "--help", usage(), usage());
+		String loadBalancerHost = Utils.bindParamenter(args, "-lb", null, usage());
+		String serverAndPort = Utils.bindParamenter(args, "-sp", null, usage());
+		String appServerHost = serverAndPort.substring(0, serverAndPort.indexOf(":"));
+		int clientServerPort = Integer.parseInt(serverAndPort.substring(serverAndPort.indexOf(":") + 1));
 		
-		String loadBalancerHost = args[0];
-		String appServerHost = args[1].substring(0, args[1].indexOf(":"));
-		int clientServerPort = Integer.parseInt(args[1].substring(args[1].indexOf(":") + 1));
-		String[] dbServersAddresses = new String[args.length - 2];
-		System.arraycopy(args, 2, dbServersAddresses, 0, args.length - 2);
-
+		ArrayList<String> dbServersAddresses = Utils.bindMultiParamenter(args, "-dbs", null, usage());
+		
 		AppServer appServer = new AppServer(loadBalancerHost, appServerHost, clientServerPort, dbServersAddresses);
 
 		Runtime.getRuntime().addShutdownHook(new Thread(new AppServer.CloseAppServer(appServer)));
 
-		System.out.println("\nApp server running...\n");
+		System.out.println(Utils.squaredFrame("App server running..."));
+		System.out.println(" -> Load Balancer IP Address: " + loadBalancerHost);
+		System.out.println(" -> App Server IP Address and Port: " + serverAndPort);
+		System.out.println(" -> DB Servers Registry IP Address: ");
+		for (int i = 0; i < dbServersAddresses.size(); i++) {
+			System.out.println("\t- " + dbServersAddresses.get(i));
+		}
 		appServer.receiveCalls();
 
 	}
@@ -112,39 +119,40 @@ public class AppServer {
 		out.println("Usage:");
 		out.println("run_app_server.sh <args>:");
 		out.println("\t<args>:");
-		out.println("\t--help ==> Help");
-		out.println("\t-lb <load balancer ip address> ==> Defines localhost IP Address");
-		out.println("\tFALTA CENAS");
+		out.println("\t[required] -lb <load balancer ip address> ==> Defines Load Balancer IP Address");
+		out.println("\t[required] -sp <ip server>:<port> ==> Defines IP Address and Port where Cliente will be served");
+		out.println("\t[required] -dbs <IP_db1> <IP_db2> ... ==> Defines the IP Addresses of DB registries");
+		out.println("\n\t--help ==> Help");
 		out.close();
 		
 		return outBuffer.toString();
 		
 	}
 
-	public AppServer(String loadBalancerHost, String appServerHost, int clientServerPort, String[] dbServersAddresses) throws InterruptedException, RemoteException {
+	public AppServer(String loadBalancerHost, String appServerHost, int clientServerPort, ArrayList<String> dbServersAddresses) throws InterruptedException, RemoteException {
 
 		Utils.setSecurityProperties(false);
 
 		this.lbHostAddress = loadBalancerHost;
 		this.appServerHost = appServerHost;
 		this.clientServerPort = clientServerPort;
-		this.dbServerHostAddresses = new ArrayList<>(Arrays.asList(dbServersAddresses));
+		this.dbServerHostAddresses = dbServersAddresses;
 		this.userController = new UserController(dbServerHostAddresses);
 		
-		for (int i = 0; i < dbServerHostAddresses.size(); i++) {
-			Registry registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
-
-					new SslRMIClientSocketFactory());
-
-			for (int j = 0; j < registry.list().length; j++) {
-				try {
-					this.dbRemoteObjects.add((DBOperations) registry.lookup(registry.list()[j]));
-				} catch (NotBoundException e1) {
-					System.err.println("DB with name: " + registry.list()[j] + " at host "
-							+ dbServerHostAddresses.get(i) + " doesn't exist");
-				}
-			}
-		}
+//		for (int i = 0; i < dbServerHostAddresses.size(); i++) {
+//			Registry registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
+//
+//					new SslRMIClientSocketFactory());
+//
+//			for (int j = 0; j < registry.list().length; j++) {
+//				try {
+//					this.dbRemoteObjects.add((DBOperations) registry.lookup(registry.list()[j]));
+//				} catch (NotBoundException e1) {
+//					System.err.println("DB with name: " + registry.list()[j] + " at host "
+//							+ dbServerHostAddresses.get(i) + " doesn't exist");
+//				}
+//			}
+//		}
 
 		try {
 			announceToLB();

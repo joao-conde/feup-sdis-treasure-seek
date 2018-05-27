@@ -45,13 +45,10 @@ public class LoadBalancer {
 	private ExecutorService threadPool;
 
 	public static void main(String[] args) throws IOException, ParseMessageException, JSONException {
-		if(Arrays.asList(args).indexOf("--help") != -1) {
-			System.out.println(usage());
-			System.exit(1);
-		}
+		Utils.bindParamenter(args, "--help", usage(), usage());
 		
 		Utils.setSecurityProperties(false);
-		System.out.println("\nLoad Balancer running...\n");
+		System.out.println(Utils.squaredFrame("Load Balancer running..."));
 		new LoadBalancer();
 	}
 	

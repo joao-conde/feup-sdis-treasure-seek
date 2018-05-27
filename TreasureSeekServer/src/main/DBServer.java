@@ -41,6 +41,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	public static final String DB_SERVER_OBJECT_NAME = "dbServerObject";
 	
 	private static final String DB_PATH = "../db/";
+	private static final String INITIATOR_DB = "initiator";
 	
     private String OBJNAME;
     private String DBNAME;
@@ -64,17 +65,18 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		Utils.setSecurityProperties(false);  
 		
-		if(Arrays.asList(args).indexOf("--help") != -1) {
-			System.out.println(usage());
-			System.exit(1);
-		}
+		Utils.bindParamenter(args, "--help", usage(), usage());
 		
 		String localAddress = Utils.bindParamenter(args, "-lh", InetAddress.getLocalHost().getHostAddress(), usage());
-		String recoverDBAddress = Utils.bindParamenter(args, "-r", null, usage());
+		String recoverDBAddress = Utils.bindParamenter(args, "-r", INITIATOR_DB, usage());
 		DBServer dbServer = new DBServer(localAddress, recoverDBAddress);
 		
 		dbServer.initRMIInterface();
-		System.out.println("\nDBServer running...\n");
+		
+		System.out.println(Utils.squaredFrame("DB Server running..."));
+		System.out.println(" -> DB Server IP Address: " + localAddress);
+		if(!recoverDBAddress.equals(INITIATOR_DB))
+			System.out.println(" -> DB Recovered from IP Address: " + recoverDBAddress);
 	}	
 	
 	public static String usage() {
@@ -85,9 +87,9 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		out.println("Usage:");
 		out.println("run_db_server.sh <args>:");
 		out.println("\t<args>:");
-		out.println("\t--help ==> Help");
 		out.println("\t-lh <localhost_address> ==> Defines localhost IP Address");
 		out.println("\t-r <recover_db_host_address> ==> Recover DB from IP Address");
+		out.println("\n\t--help ==> Help");
 		out.close();
 		
 		return outBuffer.toString();
@@ -135,7 +137,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 
 		connection = DriverManager.getConnection(DBURL);
 		
-		if(recoverDBAddress != null) {
+		if(!recoverDBAddress.equals(INITIATOR_DB)) {
 			recoverDBFile();
 		}
 		else if (!dbFileExists) {
