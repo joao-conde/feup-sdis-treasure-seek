@@ -299,12 +299,12 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 	public ArrayList<Pair<User, Integer>> getRanking() throws RemoteException, SQLException{
 
 		PreparedStatement stmt = connection.prepareStatement(
-			"SELECT user.*, count(user.id) "+
-			"FROM user_treasure" +
-			"JOIN user ON user.id = user_treasure.userid" + 
-			"GROUP BY user.id" +
-			"ORDER BY count(user.id) DESC;"
+			"SELECT user.*, count(user_treasure.userId) FROM user " +
+			"LEFT JOIN user_treasure ON user.id=user_treasure.userId " +
+			"WHERE user.admin=0 GROUP BY user.id " +
+			"ORDER BY count(user_treasure.userId) DESC"
 		);
+		
 		
 		ResultSet resultSet = stmt.executeQuery();
 
