@@ -4,10 +4,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -49,6 +49,9 @@ public class LoadBalancer {
 		
 		Utils.setSecurityProperties(false);
 		System.out.println(Utils.squaredFrame("Load Balancer running..."));
+		System.out.println(" -> Listening Clients ON " + InetAddress.getLocalHost().getHostAddress() + ":" + CLIENT_PORT); 
+		System.out.println(" -> Listening Servers ON " + InetAddress.getLocalHost().getHostAddress() + ":" + SERVER_PORT); 
+
 		new LoadBalancer();
 	}
 	
