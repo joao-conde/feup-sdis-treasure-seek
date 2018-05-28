@@ -75,7 +75,6 @@ public class Controller {
 		    else
 		    		remoteObject.updateUser((long)user.getValue("id"), token, ipAddress, dbServerHostAddresses);
 		    		    	
-		    System.out.println("Fb json: " + userInfo);
 		    
 		    scanner.close();
 		    return user;

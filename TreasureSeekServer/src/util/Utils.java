@@ -96,7 +96,6 @@ public class Utils {
 				int i = 1;
 				while(args[index + i].charAt(0) != '-') {
 					result.add(args[index + i]);
-					System.out.println(args[index + i] + " added.");
 					i++;
 					
 				}

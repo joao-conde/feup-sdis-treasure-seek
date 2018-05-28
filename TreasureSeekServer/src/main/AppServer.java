@@ -75,25 +75,19 @@ public class AppServer {
 	public int dbRemoteIndex = -1;
 
 	public static void main(String[] args)
-			throws InterruptedException, ExecutionException, TimeoutException, RemoteException {
+			throws InterruptedException, ExecutionException, TimeoutException, RemoteException, UnknownHostException{
 
-				
-		if(Arrays.asList(args).indexOf("--help") != -1) {
-			System.out.println(usage());
-			System.exit(1);
-		}
-		
-		if(args.length < 3) {
-			System.err.println("Invalid number of arguments.");
-		}
-		
+
 		Utils.bindParamenter(args, "--help", usage(), usage());
-		String loadBalancerHost = Utils.bindParamenter(args, "-lb", null, usage());
-		String serverAndPort = Utils.bindParamenter(args, "-sp", null, usage());
+		String serverAndPort = Utils.bindParamenter(args, "-sp", InetAddress.getLocalHost().getHostAddress() + ":2000", usage());
 		String appServerHost = serverAndPort.substring(0, serverAndPort.indexOf(":"));
 		int clientServerPort = Integer.parseInt(serverAndPort.substring(serverAndPort.indexOf(":") + 1));
 		
-		ArrayList<String> dbServersAddresses = Utils.bindMultiParamenter(args, "-dbs", null, usage());
+		String loadBalancerHost = Utils.bindParamenter(args, "-lb", appServerHost, usage());
+
+		ArrayList<String> defaultDBServers = new ArrayList<>();
+		defaultDBServers.add(appServerHost);
+		ArrayList<String> dbServersAddresses = Utils.bindMultiParamenter(args, "-dbs", defaultDBServers, usage());
 		
 		AppServer appServer = new AppServer(loadBalancerHost, appServerHost, clientServerPort, dbServersAddresses);
 
@@ -119,9 +113,9 @@ public class AppServer {
 		out.println("Usage:");
 		out.println("run_app_server.sh <args>:");
 		out.println("\t<args>:");
-		out.println("\t[required] -lb <load balancer ip address> ==> Defines Load Balancer IP Address");
-		out.println("\t[required] -sp <ip server>:<port> ==> Defines IP Address and Port where Cliente will be served");
-		out.println("\t[required] -dbs <IP_db1> <IP_db2> ... ==> Defines the IP Addresses of DB registries");
+		out.println("\t-lb <load balancer ip address> ==> Defines Load Balancer IP Address (default localhost)");
+		out.println("\t-sp <ip server>:<port> ==> Defines IP Address and Port where Cliente will be served (default localhost:2000)");
+		out.println("\t-dbs <IP_db1> <IP_db2> ... ==> Defines the IP Addresses of DB registries (default {localhost})");
 		out.println("\n\t--help ==> Help");
 		out.close();
 		
@@ -138,21 +132,6 @@ public class AppServer {
 		this.clientServerPort = clientServerPort;
 		this.dbServerHostAddresses = dbServersAddresses;
 		this.controller = new Controller(dbServerHostAddresses);
-		
-//		for (int i = 0; i < dbServerHostAddresses.size(); i++) {
-//			Registry registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
-//
-//					new SslRMIClientSocketFactory());
-//
-//			for (int j = 0; j < registry.list().length; j++) {
-//				try {
-//					this.dbRemoteObjects.add((DBOperations) registry.lookup(registry.list()[j]));
-//				} catch (NotBoundException e1) {
-//					System.err.println("DB with name: " + registry.list()[j] + " at host "
-//							+ dbServerHostAddresses.get(i) + " doesn't exist");
-//				}
-//			}
-//		}
 
 		try {
 			announceToLB();
