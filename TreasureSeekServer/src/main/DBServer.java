@@ -184,7 +184,6 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		try (FileOutputStream fos = new FileOutputStream(DB_PATH + DBNAME)) {
 		   fos.write(obj.recoverDB());
-		   fos.close();
 		}
 	}
 
@@ -319,7 +318,7 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 			user.setValue("name", resultSet.getString(4));
 			Integer score = resultSet.getInt(7);
 						
-			ranking.add(new Pair(user, score));
+			ranking.add(new Pair<User, Integer>(user, score));
 				
 		}
 

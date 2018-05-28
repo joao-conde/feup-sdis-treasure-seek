@@ -46,8 +46,8 @@ public class Client {
 	public Client(String host, int port, int loginAttempts, String token)
 			throws UnknownHostException, IOException, InterruptedException {
 
-		this.host = host;
-		this.appServerPort = port;
+		Client.host = host;
+		Client.appServerPort = port;
 		this.token = token;
 
 		for (int i = 0; i < loginAttempts; i++) {
