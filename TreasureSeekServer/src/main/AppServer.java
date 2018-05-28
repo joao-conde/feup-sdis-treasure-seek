@@ -40,7 +40,7 @@ import org.json.JSONObject;
 import communications.Message;
 import communications.ReplyMessage;
 import communications.ReplyMessage.ReplyMessageStatus;
-import controller.UserController;
+import controller.Controller;
 import model.Model;
 import model.Model.ModelType;
 import model.Treasure;
@@ -65,7 +65,7 @@ public class AppServer {
 
 	private ExecutorService threadPool = Executors.newFixedThreadPool(20);
 
-	private UserController userController;
+	private Controller controller;
 
 	private String lbHostAddress;
 	private String appServerHost;
@@ -137,7 +137,7 @@ public class AppServer {
 		this.appServerHost = appServerHost;
 		this.clientServerPort = clientServerPort;
 		this.dbServerHostAddresses = dbServersAddresses;
-		this.userController = new UserController(dbServerHostAddresses);
+		this.controller = new Controller(dbServerHostAddresses);
 		
 //		for (int i = 0; i < dbServerHostAddresses.size(); i++) {
 //			Registry registry = LocateRegistry.getRegistry(dbServerHostAddresses.get(i), Registry.REGISTRY_PORT,
@@ -269,11 +269,11 @@ public class AppServer {
 
 			case LOGIN:
 
-				User user = userController.loginUser(receivedMessage.getBody(), chooseDB());
+				User user = controller.loginUser(receivedMessage.getBody(), chooseDB());
 
 				if (user != null) {
 
-					Pair<ArrayList<Treasure>, ArrayList<Treasure>> allTreasures = userController
+					Pair<ArrayList<Treasure>, ArrayList<Treasure>> allTreasures = controller
 							.getAllTreasures((long) user.getValue("id"), chooseDB());
 
 					JSONArray foundTreasuresJSON = new JSONArray();
@@ -304,7 +304,7 @@ public class AppServer {
 
 			case LOGOUT:
 
-				boolean result = userController.logoutUser(receivedMessage.getBody().getLong("id"),
+				boolean result = controller.logoutUser(receivedMessage.getBody().getLong("id"),
 						receivedMessage.getBody().getString("token"), chooseDB());
 
 				if (result)
@@ -321,7 +321,7 @@ public class AppServer {
 				if (type == Model.ModelType.FOUND_TREASURE) {
 
 					try {
-						createResult = userController.validateTreasure(receivedMessage.getBody().getInt("treasureId"),
+						createResult = controller.validateTreasure(receivedMessage.getBody().getInt("treasureId"),
 								receivedMessage.getBody().getString("answer"),
 								receivedMessage.getBody().getString("token"),
 								receivedMessage.getBody().getLong("userId"), chooseDB());
@@ -350,11 +350,11 @@ public class AppServer {
 
 				}
 
-				if (type == Model.ModelType.TREASURE) {
+				else if (type == Model.ModelType.TREASURE) {
 					boolean inserted = false;
 
 					try {
-						inserted = userController.createTreasure(receivedMessage.getBody(), chooseDB());
+						inserted = controller.createTreasure(receivedMessage.getBody(), chooseDB());
 					} catch (ResourceNotFoundException e) {
 						ReplyMessage.buildResponseMessage(ReplyMessageStatus.RESOURCE_NOT_FOUND);
 					} catch (NotAuthorizedException e) {
@@ -366,7 +366,7 @@ public class AppServer {
 					if (inserted) {
 
 						try {
-							ArrayList<String> addresses = userController.getSubscribedUsersAddresses(chooseDB());
+							ArrayList<String> addresses = controller.getSubscribedUsersAddresses(chooseDB());
 
 							for (String address : addresses) {
 
@@ -384,7 +384,7 @@ public class AppServer {
 					} else
 						return ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 				}
-
+				break;
 			case RETRIEVE:
 
 				ModelType retrieveType = receivedMessage.getHeader().getResource().get(0).key;
@@ -394,7 +394,7 @@ public class AppServer {
 					
 					JSONObject body = receivedMessage.getBody();
 										
-					Pair<ArrayList<Treasure>, ArrayList<Treasure>> allTreasures = userController
+					Pair<ArrayList<Treasure>, ArrayList<Treasure>> allTreasures = controller
 							.getAllTreasures(body.getLong("userId"), chooseDB(), body.getString("token"));
 					
 					JSONArray treasures = new JSONArray();
@@ -421,7 +421,7 @@ public class AppServer {
 
 					JSONObject body = receivedMessage.getBody();
 					
-					ArrayList<Pair<User, Integer>> ranking = userController
+					ArrayList<Pair<User, Integer>> ranking = controller
 							.getRanking(body.getLong("userId"), chooseDB(), body.getString("token"));
 					
 					JSONArray rankingJSONArray = new JSONArray();
@@ -441,7 +441,7 @@ public class AppServer {
 			default:
 				return ReplyMessage.buildResponseMessage(ReplyMessageStatus.BAD_REQUEST);
 			}
-
+			return null;
 		}
 
 	}

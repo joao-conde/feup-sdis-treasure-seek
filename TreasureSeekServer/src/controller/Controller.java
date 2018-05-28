@@ -22,12 +22,12 @@ import util.NotAuthorizedException;
 import util.ResourceNotFoundException;
 import util.Utils.Pair;
 
-public class UserController {
+public class Controller {
 	
 	private static final String FACEBOOK_API_ADDRES = "https://graph.facebook.com/v2.11/"; 
 	private ArrayList<String> dbServerHostAddresses = new ArrayList<>();
 
-	public UserController(ArrayList<String> dbServerHostAddresses) {
+	public Controller(ArrayList<String> dbServerHostAddresses) {
 		this.dbServerHostAddresses = dbServerHostAddresses;
 	}
 

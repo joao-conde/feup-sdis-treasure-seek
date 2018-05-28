@@ -185,7 +185,6 @@ public class DBServer extends UnicastRemoteObject implements DBOperations {
 		
 		try (FileOutputStream fos = new FileOutputStream(DB_PATH + DBNAME)) {
 		   fos.write(obj.recoverDB());
-		   fos.close();
 		}
 	}
 
