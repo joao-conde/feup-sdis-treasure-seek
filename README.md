@@ -6,3 +6,5 @@ The application has a server side component, with load balancer elements and bot
 
 The client side is an android application. It works for both admins and regular users.
 Admins can plant treasures across FEUP campus and regular users can find them and answer the puzzle within each one to earn points! There is also a ranking ladder, so make sure to be first.
+
+Check out this [demo](https://youtu.be/ES12wEP2aGI)
